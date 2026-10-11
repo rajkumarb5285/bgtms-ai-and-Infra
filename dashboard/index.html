@@ -207,7 +207,11 @@
                         <span class="title-icon">⚠️</span>
                         <span>INCIDENTS & VIOLATION DISPATCH</span>
                     </div>
-                    <span class="badge-count" id="alertCount">3 ALERTS</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <button class="cam-badge" style="cursor: pointer; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444;" onclick="simulateIncident('COLLISION')">+ Accident</button>
+                        <button class="cam-badge" style="cursor: pointer; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6;" onclick="simulateIncident('EMERGENCY')">+ Ambulance</button>
+                        <span class="badge-count" id="alertCount">3 ALERTS</span>
+                    </div>
                 </div>
 
                 <div class="alerts-feed" id="alertsFeed">

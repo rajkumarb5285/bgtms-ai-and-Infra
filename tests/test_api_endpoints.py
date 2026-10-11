@@ -126,3 +126,18 @@ def test_signal_plan_endpoint():
     data = response.json()
     assert "phases" in data
     assert "cycle_time_sec" in data
+
+
+def test_root_redirect():
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code in [307, 302, 308]
+    assert response.headers["location"] == "/dashboard/"
+
+
+def test_simulate_incident_endpoint():
+    response = client.post("/api/v1/incidents/simulate?incident_type=COLLISION&approach_id=North_HosurRd")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "SUCCESS"
+    assert "incident" in data
+    assert data["incident"]["incident_type"] == "COLLISION"

@@ -14,37 +14,17 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PIL import Image
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, Response, FileResponse
+from fastapi.responses import JSONResponse, Response, FileResponse, RedirectResponse
 
 from bgtms.pipeline import TrafficIntelligencePipeline
 from bgtms.core.types import (
-    BoundingBox, TrackedVehicle, ApproachState, IncidentAlert, SignalPlan
+    BoundingBox, TrackedVehicle, ApproachState, IncidentAlert, SignalPlan, IncidentType
 )
 from bgtms.core.config import get_settings, get_classes
-
-app = FastAPI(
-    title="BGTMS - Bengaluru Traffic Management System API",
-    description="AI-powered traffic intelligence, microscopic density analysis, incident alerts, and adaptive signal optimization.",
-    version="1.0.0"
-)
-
-# Enable CORS for frontend dashboard
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
-
-# Initialize pipeline instance
-pipeline = TrafficIntelligencePipeline(
-    approach_id="North_HosurRd",
-    approach_name="Central Silk Board (Hosur Rd Approach)"
-)
 
 # Synthetic frame cache for simulation stream
 _sample_frames: List[np.ndarray] = []
@@ -71,10 +51,41 @@ def load_or_create_sample_frames():
         _sample_frames.append(blank)
 
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     load_or_create_sample_frames()
     print("[+] BGTMS Traffic Intelligence Service started successfully")
+    yield
+
+
+app = FastAPI(
+    title="BGTMS - Bengaluru Traffic Management System API",
+    description="AI-powered traffic intelligence, microscopic density analysis, incident alerts, and adaptive signal optimization.",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# Enable CORS for frontend dashboard
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+# Initialize pipeline instance
+pipeline = TrafficIntelligencePipeline(
+    approach_id="North_HosurRd",
+    approach_name="Central Silk Board (Hosur Rd Approach)"
+)
+
+
+@app.get("/")
+async def root():
+    """Redirect root directly to live operator command center dashboard."""
+    return RedirectResponse(url="/dashboard/")
+
 
 
 @app.get("/api/v1/health")
@@ -167,6 +178,42 @@ async def trigger_emergency_green_corridor(approach_id: str = "North_HosurRd", e
         "target_approach": approach_id,
         "signal_plan": plan.model_dump()
     }
+
+
+@app.post("/api/v1/incidents/simulate")
+async def simulate_incident(incident_type: str = "COLLISION", approach_id: str = "North_HosurRd"):
+    """Simulates an incident for real-time testing on the dashboard and operator consoles."""
+    import uuid
+    alert_type = IncidentType.COLLISION
+    desc = f"Collision detected between two vehicles on {approach_id}"
+    sev = "CRITICAL"
+
+    if incident_type.upper() == "EMERGENCY":
+        alert_type = IncidentType.EMERGENCY_VEHICLE_APPROACH
+        desc = f"Ambulance #108 approaching on {approach_id}. Green corridor activated."
+        sev = "CRITICAL"
+    elif incident_type.upper() == "WRONG_WAY":
+        alert_type = IncidentType.WRONG_WAY
+        desc = f"Dangerous Wrong-Way driver detected on {approach_id}"
+        sev = "CRITICAL"
+    elif incident_type.upper() == "STALL":
+        alert_type = IncidentType.STALLED_VEHICLE
+        desc = f"Stalled Bus blocking central lane on {approach_id}"
+        sev = "WARNING"
+
+    alert = IncidentAlert(
+        incident_id=f"SIM-{uuid.uuid4().hex[:6].upper()}",
+        incident_type=alert_type,
+        severity=sev,
+        timestamp=time.time(),
+        track_id=999,
+        approach_id=approach_id,
+        location=(640.0, 360.0),
+        description=desc,
+        details={"simulation": True, "type": incident_type}
+    )
+    pipeline.all_incidents.append(alert)
+    return {"status": "SUCCESS", "incident": alert.model_dump()}
 
 
 @app.get("/api/v1/signal/plan")

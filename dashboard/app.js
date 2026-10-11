@@ -212,6 +212,51 @@ function updateDashboardTelemetry(data) {
     if (data.forecasts) {
         updateForecasts(data.forecasts);
     }
+    if (data.new_incidents && data.new_incidents.length > 0) {
+        data.new_incidents.forEach(inc => addIncidentAlert(inc));
+    }
+}
+
+function addIncidentAlert(inc) {
+    const feed = document.getElementById("alertsFeed");
+    if (!feed) return;
+    const item = document.createElement("div");
+    const sevClass = inc.severity === "CRITICAL" ? "alert-critical" : (inc.severity === "WARNING" ? "alert-warning" : "alert-info");
+    item.className = `alert-item ${sevClass}`;
+    item.innerHTML = `
+        <div class="alert-meta">
+            <span class="alert-type">${(inc.incident_type || 'INCIDENT').replace(/_/g, ' ')}</span>
+            <span class="alert-time">JUST NOW</span>
+        </div>
+        <p class="alert-desc">${inc.description || 'Traffic incident flagged by AI vision'}</p>
+    `;
+    feed.insertBefore(item, feed.firstChild);
+    while (feed.children.length > 15) {
+        feed.removeChild(feed.lastChild);
+    }
+    const countBadge = document.getElementById("alertCount");
+    if (countBadge) {
+        countBadge.textContent = `${feed.children.length} ALERTS`;
+    }
+}
+
+async function simulateIncident(type) {
+    try {
+        const res = await fetch(`/api/v1/incidents/simulate?incident_type=${type}`, { method: "POST" });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.incident) {
+                addIncidentAlert(data.incident);
+            }
+        }
+    } catch (e) {
+        // Fallback local simulation if offline
+        addIncidentAlert({
+            incident_type: type === "EMERGENCY" ? "EMERGENCY_VEHICLE" : "COLLISION",
+            severity: "CRITICAL",
+            description: type === "EMERGENCY" ? "Ambulance #108 approaching central corridor. Preemption triggered." : "Simulated abrupt collision detected on North Approach."
+        });
+    }
 }
 
 function updateFromState(data) {
@@ -285,3 +330,4 @@ function changeCamera() {
 }
 
 window.onload = init;
+

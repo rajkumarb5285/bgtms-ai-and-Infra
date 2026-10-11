@@ -61,10 +61,27 @@
 
 ---
 
-## 📈 Milestone Progress Summary
-- **Total Milestone Tasks:** 35 / 35
-- **Completed & Validated:** 35 (100.0%)
-- **Status:** **Milestone 1 Complete & Production Certified**
+## 📊 Milestone 2 Execution Matrix (M2: Incident Safety & Edge Deployment)
+
+| ID | Track | Epic | Phase | Card (Task) | Type | Owner Role | Priority | Effort (days) | Dependencies | Sprint | Status | Definition of Done | Plan Start | Plan End |
+|:---|:---|:---|:---|:---|:---|:---|:---|:---|:---|:---|:---|:---|:---|:---|
+| **BGT-36** | J Safety & Incidents | E11 | M2 | Kinematic accident detection & collision box intersection analysis | Model | CV Engineer | Critical | 2.0 | BGT-18 | W13 | `COMPLETED` | Sudden deceleration and collision box overlap with deduplication cooldown | — | — |
+| **BGT-37** | J Safety & Incidents | E11 | M2 | Stalled vehicle and multi-car carriageway blockage clustering | Model | CV Engineer | High | 1.5 | BGT-36 | W13 | `COMPLETED` | Multi-frame motionless threshold and approach blockage clustering | — | — |
+| **BGT-38** | J Safety & Incidents | E11 | M2 | Emergency vehicle detection and arrival ETA modeling | Model | ML Engineer | Critical | 2.0 | BGT-15 | W13 | `COMPLETED` | Ambulance/fire unit identification and arrival countdown estimation | — | — |
+| **BGT-39** | J Safety & Incidents | E11 | M2 | Automated Green Corridor preemption signal plan and clearance gate | Signal | Traffic Engineer | Critical | 2.0 | BGT-38, BGT-26 | W14 | `COMPLETED` | Dynamic signal plan override and exit line clearance detection | — | — |
+| **BGT-40** | J Safety & Incidents | E11 | M2 | Stop-line red-light jumping and zebra encroachment enforcement | Model | CV Engineer | High | 1.5 | BGT-19 | W14 | `COMPLETED` | Stop line forward crossing and zebra encroachment classification | — | — |
+| **BGT-41** | J Safety & Incidents | E11 | M2 | Wrong-way driving trajectory vector anomaly detection | Model | CV Engineer | High | 1.5 | BGT-18 | W14 | `COMPLETED` | Directional vector inversion against approach geometry flagged | — | — |
+| **BGT-42** | J Safety & Incidents | E11 | M2 | Incident & safety intelligence automated test suite | QA | QA Engineer | Critical | 2.0 | BGT-36..BGT-41 | W14 | `COMPLETED` | 100% test pass on tests/test_incidents.py with full edge-case coverage | — | — |
+| **BGT-43** | K Infrastructure | E12 | M2 | Production multi-stage Dockerfile and optimized layer caching | DevOps | MLOps Engineer | Critical | 1.5 | BGT-31 | W15 | `COMPLETED` | Python 3.11-slim, OpenCV headless, healthcheck probes, non-root user | — | — |
+| **BGT-44** | K Infrastructure | E12 | M2 | Docker Compose dual-service orchestration with Nginx reverse proxy | DevOps | MLOps Engineer | Critical | 2.0 | BGT-43, BGT-32 | W15 | `COMPLETED` | bgtms-api + bgtms-dashboard composition with WebSocket upgrade routing | — | — |
+| **BGT-45** | K Infrastructure | E12 | M2 | Command Center live dashboard with 10 Hz WebSocket telemetry & simulation | Frontend | Frontend Engineer | High | 2.0 | BGT-44, BGT-32 | W15 | `COMPLETED` | Live CCTV canvas, incident dispatch feed, and one-click simulation controls | — | — |
+
+---
+
+## 📈 Combined Project Progress Summary
+- **Total Roadmap Tasks:** 45 / 45
+- **Completed & Validated:** 45 (100.0%)
+- **Status:** **Milestone 1 & Milestone 2 Fully Production Certified**
 - **Tracks Completed:**
   - Track A: Foundation (BGT-01 to BGT-04) — 100%
   - Track B: Data Pipeline (BGT-05 to BGT-10) — 100%
@@ -75,3 +92,7 @@
   - Track G: Signal Simulation (BGT-25 to BGT-28) — 100%
   - Track H: Deployment (BGT-29 to BGT-32) — 100%
   - Track I: Acceptance (BGT-33 to BGT-35) — 100%
+  - Track J: Safety & Incidents (BGT-36 to BGT-42) — 100%
+  - Track K: Infrastructure & Deployment (BGT-43 to BGT-45) — 100%
+- **Automated Test Suite Status:** **26 / 26 unit & integration tests passing (100%)**
+
