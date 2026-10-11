@@ -86,11 +86,23 @@ pipeline = TrafficIntelligencePipeline(
 
 @app.get("/")
 async def root():
-    """Redirect root directly to React Vite command center or legacy dashboard."""
+    """Serves the React Vite AI command center directly or redirects to legacy dashboard."""
     frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-    if frontend_dist.exists():
-        return RedirectResponse(url="/app/")
+    index_html = frontend_dist / "index.html"
+    if index_html.exists():
+        return FileResponse(str(index_html))
     return RedirectResponse(url="/dashboard/")
+
+
+@app.get("/favicon.ico")
+@app.get("/favicon.svg")
+async def favicon():
+    frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    fav = frontend_dist / "favicon.svg"
+    if fav.exists():
+        return FileResponse(str(fav), media_type="image/svg+xml")
+    return Response(status_code=204)
+
 
 
 
@@ -501,6 +513,9 @@ if dashboard_dir.exists():
 
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
     app.mount("/app", StaticFiles(directory=str(frontend_dist), html=True), name="react-app")
 
 
