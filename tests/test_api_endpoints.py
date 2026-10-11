@@ -131,7 +131,7 @@ def test_signal_plan_endpoint():
 def test_root_redirect():
     response = client.get("/", follow_redirects=False)
     assert response.status_code in [307, 302, 308]
-    assert response.headers["location"] == "/dashboard/"
+    assert response.headers["location"] in ["/dashboard/", "/app/"]
 
 
 def test_simulate_incident_endpoint():
@@ -141,3 +141,32 @@ def test_simulate_incident_endpoint():
     assert data["status"] == "SUCCESS"
     assert "incident" in data
     assert data["incident"]["incident_type"] == "COLLISION"
+
+
+def test_analyze_photo_endpoint():
+    img = Image.new("RGB", (320, 320), color=(80, 90, 100))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    response = client.post(
+        "/api/v1/analyze/photo?confidence_threshold=0.30",
+        files={"file": ("photo.jpg", buf, "image/jpeg")}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "detections_count" in data
+    assert "total_pcu" in data
+    assert "annotated_image" in data
+    assert data["annotated_image"].startswith("data:image/jpeg;base64,")
+
+
+def test_sample_photo_and_video_endpoints():
+    p_resp = client.get("/api/v1/sample/photo")
+    assert p_resp.status_code == 200
+    assert "image/jpeg" in p_resp.headers["content-type"]
+
+    v_resp = client.get("/api/v1/sample/video")
+    assert v_resp.status_code == 200
+    assert "video/mp4" in v_resp.headers["content-type"]

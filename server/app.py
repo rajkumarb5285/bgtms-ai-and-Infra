@@ -7,6 +7,8 @@ and adaptive signal control via async REST and WebSockets.
 import os
 import io
 import time
+import base64
+import tempfile
 import asyncio
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -24,6 +26,7 @@ from bgtms.pipeline import TrafficIntelligencePipeline
 from bgtms.core.types import (
     BoundingBox, TrackedVehicle, ApproachState, IncidentAlert, SignalPlan, IncidentType
 )
+
 from bgtms.core.config import get_settings, get_classes
 
 # Synthetic frame cache for simulation stream
@@ -83,7 +86,10 @@ pipeline = TrafficIntelligencePipeline(
 
 @app.get("/")
 async def root():
-    """Redirect root directly to live operator command center dashboard."""
+    """Redirect root directly to React Vite command center or legacy dashboard."""
+    frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    if frontend_dist.exists():
+        return RedirectResponse(url="/app/")
     return RedirectResponse(url="/dashboard/")
 
 
@@ -118,6 +124,223 @@ async def detect_vehicles(file: UploadFile = File(...)):
         "detections_count": len(detections),
         "detections": [d.model_dump() for d in detections]
     }
+
+
+CLASS_COLORS = {
+    "car": (246, 130, 59),          # Blue/Cyan
+    "motorcycle": (16, 185, 129),    # Emerald
+    "auto_rickshaw": (11, 158, 245), # Amber
+    "bus": (246, 92, 139),          # Purple
+    "truck": (199, 116, 56),        # Indigo
+    "bicycle": (20, 184, 166),      # Teal
+    "pedestrian": (236, 72, 153),   # Pink
+    "emergency_vehicle": (68, 68, 239) # Crimson Red
+}
+
+PCU_BY_NAME = {
+    "car": 1.0,
+    "motorcycle": 0.5,
+    "auto_rickshaw": 1.0,
+    "bus": 3.0,
+    "truck": 3.0,
+    "bicycle": 0.4,
+    "pedestrian": 0.2,
+    "emergency_vehicle": 1.5
+}
+
+
+def annotate_image(image: np.ndarray, detections: List[BoundingBox]) -> np.ndarray:
+    annotated = image.copy()
+    for d in detections:
+        color = CLASS_COLORS.get(d.class_name, (200, 200, 200))
+        cv2.rectangle(annotated, (int(d.x1), int(d.y1)), (int(d.x2), int(d.y2)), color, 2)
+        label = f"{d.class_name} {int(d.confidence * 100)}%"
+        (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
+        cv2.rectangle(annotated, (int(d.x1), max(0, int(d.y1) - h - 6)), (int(d.x1) + w + 6, int(d.y1)), color, -1)
+        cv2.putText(annotated, label, (int(d.x1) + 3, max(h, int(d.y1) - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+    return annotated
+
+
+@app.post("/api/v1/analyze/photo")
+async def analyze_photo(
+    file: UploadFile = File(...),
+    confidence_threshold: float = Query(0.35, ge=0.05, le=0.95),
+    is_red_light: bool = Query(False)
+):
+    """
+    Comprehensive single-photo analysis: runs vehicle detection, IRC PCU density,
+    congestion classification, incident checking, and returns an annotated image base64.
+    """
+    start_t = time.time()
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if image is None:
+        raise HTTPException(status_code=400, detail="Invalid image payload")
+
+    h, w = image.shape[:2]
+    detections = pipeline.detector.detect(image, conf_threshold=confidence_threshold)
+    pipeline_result = pipeline.process_frame(image, is_red_light=is_red_light)
+
+    class_counts: Dict[str, int] = {}
+    total_pcu = 0.0
+    for d in detections:
+        class_counts[d.class_name] = class_counts.get(d.class_name, 0) + 1
+        pcu_w = PCU_BY_NAME.get(d.class_name, 1.0)
+        total_pcu += pcu_w
+
+    annotated = annotate_image(image, detections)
+    _, buffer = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    b64_image = "data:image/jpeg;base64," + base64.b64encode(buffer).decode("utf-8")
+
+    elapsed_ms = (time.time() - start_t) * 1000.0
+
+    return {
+        "status": "success",
+        "filename": file.filename,
+        "width": w,
+        "height": h,
+        "detections_count": len(detections),
+        "total_pcu": round(total_pcu, 2),
+        "congestion_level": pipeline_result["approach_state"]["congestion_level"],
+        "average_speed_kmh": pipeline_result["approach_state"]["average_speed_kmh"],
+        "class_breakdown": class_counts,
+        "detections": [d.model_dump() for d in detections],
+        "approach_state": pipeline_result["approach_state"],
+        "incidents": pipeline_result.get("new_incidents", []),
+        "signal_plan": pipeline_result["signal_plan"],
+        "annotated_image": b64_image,
+        "latency_ms": round(elapsed_ms, 1)
+    }
+
+
+@app.post("/api/v1/analyze/video")
+async def analyze_video(
+    file: UploadFile = File(...),
+    confidence_threshold: float = Query(0.35, ge=0.05, le=0.95),
+    max_seconds: int = Query(30, ge=3, le=120)
+):
+    """
+    Full video analysis: decodes video frames, tracks multi-object vehicles with ByteTrack,
+    aggregates unique traffic volume and PCU, identifies peak congestion, and generates a timeline.
+    """
+    start_t = time.time()
+
+    suffix = Path(file.filename or "video.mp4").suffix or ".mp4"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp_path = tmp.name
+        content = await file.read()
+        tmp.write(content)
+
+    cap = cv2.VideoCapture(tmp_path)
+    if not cap.isOpened():
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail="Could not open video file")
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration_sec = total_frames / max(1.0, fps)
+
+    step = max(1, int(fps / 5))
+    max_frames_to_process = int(min(duration_sec, max_seconds) * fps)
+
+    unique_tracks: Dict[int, str] = {}
+    timeline: List[Dict[str, Any]] = []
+    video_incidents: List[Dict[str, Any]] = []
+    peak_pcu = 0.0
+    peak_frame_b64 = None
+
+    frame_idx = 0
+    while cap.isOpened() and frame_idx < max_frames_to_process:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        if frame_idx % step == 0:
+            current_sec = round(frame_idx / fps, 1)
+            detections = pipeline.detector.detect(frame, conf_threshold=confidence_threshold)
+            tracked = pipeline.tracker.update(detections)
+
+            frame_pcu = 0.0
+            for t in tracked:
+                unique_tracks[t.track_id] = t.class_name
+                frame_pcu += t.pcu
+
+            acc = pipeline.accident_detector.check_incidents(tracked)
+            if acc:
+                for a in acc:
+                    alert_dict = a.model_dump()
+                    alert_dict["video_time_sec"] = current_sec
+                    video_incidents.append(alert_dict)
+
+            timeline.append({
+                "second": current_sec,
+                "vehicles": len(tracked),
+                "pcu": round(frame_pcu, 2)
+            })
+
+            if frame_pcu >= peak_pcu or peak_frame_b64 is None:
+                peak_pcu = frame_pcu
+                annotated = annotate_image(frame, detections)
+                _, buffer = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                peak_frame_b64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode("utf-8")
+
+        frame_idx += 1
+
+    cap.release()
+    try:
+        os.remove(tmp_path)
+    except Exception:
+        pass
+
+    class_breakdown: Dict[str, int] = {}
+    total_unique_pcu = 0.0
+    for _, cls_name in unique_tracks.items():
+        class_breakdown[cls_name] = class_breakdown.get(cls_name, 0) + 1
+        total_unique_pcu += PCU_BY_NAME.get(cls_name, 1.0)
+
+    elapsed_ms = (time.time() - start_t) * 1000.0
+
+    return {
+        "status": "success",
+        "filename": file.filename,
+        "duration_sec": round(duration_sec, 1),
+        "processed_frames": len(timeline),
+        "total_unique_vehicles": len(unique_tracks),
+        "total_unique_pcu": round(total_unique_pcu, 2),
+        "peak_pcu": round(peak_pcu, 2),
+        "class_breakdown": class_breakdown,
+        "timeline": timeline,
+        "incidents": video_incidents,
+        "peak_snapshot": peak_frame_b64,
+        "latency_ms": round(elapsed_ms, 1)
+    }
+
+
+@app.get("/api/v1/sample/photo")
+async def get_sample_photo():
+    """Serves a pre-loaded Indian traffic sample image."""
+    img_dir = Path("data/processed/images")
+    if img_dir.exists():
+        files = list(img_dir.glob("*.jpg"))
+        if files:
+            return FileResponse(str(files[0]), media_type="image/jpeg")
+    if _sample_frames:
+        _, buffer = cv2.imencode(".jpg", _sample_frames[0])
+        return Response(content=buffer.tobytes(), media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="No sample photos available")
+
+
+@app.get("/api/v1/sample/video")
+async def get_sample_video():
+    """Serves the generated sample traffic video."""
+    video_path = Path("data/sample_traffic.mp4")
+    if video_path.exists():
+        return FileResponse(str(video_path), media_type="video/mp4")
+    raise HTTPException(status_code=404, detail="Sample video not found")
 
 
 @app.post("/api/v1/process-frame")
@@ -271,10 +494,14 @@ async def get_sumo_benchmark():
     return pipeline.sumo_simulator.benchmark_comparison()
 
 
-# Mount static dashboard directory
+# Mount static dashboard directory and React frontend build
 dashboard_dir = Path(__file__).resolve().parent.parent / "dashboard"
 if dashboard_dir.exists():
     app.mount("/dashboard", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
+
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/app", StaticFiles(directory=str(frontend_dist), html=True), name="react-app")
 
 
 @app.websocket("/ws/live-telemetry")

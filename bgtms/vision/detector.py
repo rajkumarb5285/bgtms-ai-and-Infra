@@ -55,13 +55,14 @@ class VehicleDetector:
             except Exception as e:
                 print(f"[VehicleDetector] Deep Learning checkpoint fallback: {e}")
 
-    def detect(self, image: np.ndarray) -> List[BoundingBox]:
+    def detect(self, image: np.ndarray, conf_threshold: Optional[float] = None) -> List[BoundingBox]:
         """
         Runs object detection on input frame (BGR numpy array).
         Uses fine-tuned deep learning model if loaded, with heuristic fallback.
         """
         h, w = image.shape[:2]
         detections: List[BoundingBox] = []
+        effective_thresh = conf_threshold if conf_threshold is not None else self.conf_thresh
 
         # 1. Deep Learning Inference if model is loaded
         if self.model is not None:
@@ -77,6 +78,7 @@ class VehicleDetector:
                 with torch.no_grad():
                     preds = self.model([img_tensor])
 
+                pred = preds[0]
                 raw_boxes = pred["boxes"].cpu()
                 raw_scores = pred["scores"].cpu()
                 raw_labels = pred["labels"].cpu()
@@ -91,7 +93,7 @@ class VehicleDetector:
                 scale_y = h / 320.0
 
                 for b, s, l in zip(p_boxes, p_scores, p_labels):
-                    if s >= self.conf_thresh:
+                    if s >= effective_thresh:
                         cls_id = int(l) - 1
                         if 0 <= cls_id < len(self.classes):
                             detections.append(BoundingBox(
