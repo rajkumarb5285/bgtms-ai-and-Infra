@@ -37,35 +37,184 @@ class VehicleDetector:
         }
 
         # Load trained PyTorch Deep Learning model if available
+        # Load High-Accuracy Deep Learning model (FasterRCNN-MobileNetV3-FPN)
         self.model = None
+        self.model_type = None
         self.device = None
-        model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "vehicle_detector.pth"))
-        if os.path.exists(model_path):
+        
+        try:
+            import torch
+            import torchvision.models.detection as detection
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+            # 1. Primary: FasterRCNN-MobileNetV3-FPN for high-recall dense multi-scale traffic
+            rcnn_weights_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "models", "fasterrcnn_mobilenet_v3.pth")
+            )
+            if os.path.exists(rcnn_weights_path):
+                model = detection.fasterrcnn_mobilenet_v3_large_fpn(weights=None)
+                state_dict = torch.load(rcnn_weights_path, map_location=self.device)
+                model.load_state_dict(state_dict)
+                model.to(self.device).eval()
+                self.model = model
+                self.model_type = "fasterrcnn_fpn"
+                print(f"[VehicleDetector] Successfully loaded High-Accuracy FasterRCNN-FPN weights from {rcnn_weights_path}")
+            else:
+                # Load via torchvision default weights
+                weights = detection.FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT
+                model = detection.fasterrcnn_mobilenet_v3_large_fpn(weights=weights)
+                model.to(self.device).eval()
+                self.model = model
+                self.model_type = "fasterrcnn_fpn"
+                print("[VehicleDetector] Loaded FasterRCNN-MobileNetV3-FPN with pretrained weights")
+        except Exception as e:
+            print(f"[VehicleDetector] FasterRCNN loading error: {e}, checking SSDLite fallback...")
             try:
                 import torch
                 from bgtms.models.train_detector import create_detector_model, NUM_CLASSES
-                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                model = create_detector_model(num_classes=NUM_CLASSES, freeze_backbone=False)
-                checkpoint = torch.load(model_path, map_location=self.device)
-                model.load_state_dict(checkpoint["model_state_dict"])
-                model.to(self.device)
-                model.eval()
-                self.model = model
-                print(f"[VehicleDetector] Successfully loaded Deep Learning weights from {model_path}")
-            except Exception as e:
-                print(f"[VehicleDetector] Deep Learning checkpoint fallback: {e}")
+                ssd_path = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), "..", "models", "vehicle_detector.pth")
+                )
+                if os.path.exists(ssd_path):
+                    model = create_detector_model(num_classes=NUM_CLASSES, freeze_backbone=False)
+                    checkpoint = torch.load(ssd_path, map_location=self.device)
+                    model.load_state_dict(checkpoint["model_state_dict"])
+                    model.to(self.device).eval()
+                    self.model = model
+                    self.model_type = "ssdlite"
+                    print(f"[VehicleDetector] Loaded fallback SSDLite from {ssd_path}")
+            except Exception as e2:
+                print(f"[VehicleDetector] Deep Learning initialization fallback: {e2}")
+
+        # COCO category lookup for FasterRCNN
+        self.coco_categories = [
+            '__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+            'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A', 'stop sign',
+            'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+            'elephant', 'bear', 'zebra', 'giraffe', 'N/A', 'backpack', 'umbrella', 'N/A', 'N/A',
+            'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
+            'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+            'bottle', 'N/A', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+            'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
+            'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'N/A', 'dining table',
+            'N/A', 'N/A', 'toilet', 'N/A', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
+            'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'N/A', 'book',
+            'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+        ]
 
     def detect(self, image: np.ndarray, conf_threshold: Optional[float] = None) -> List[BoundingBox]:
         """
         Runs object detection on input frame (BGR numpy array).
-        Uses fine-tuned deep learning model if loaded, with heuristic fallback.
+        Uses multiscale FPN deep learning model with Indian vehicle specialization,
+        and fallback to heuristic edge detection.
         """
         h, w = image.shape[:2]
         detections: List[BoundingBox] = []
         effective_thresh = conf_threshold if conf_threshold is not None else self.conf_thresh
 
-        # 1. Deep Learning Inference if model is loaded
-        if self.model is not None:
+        # 1. FasterRCNN-MobileNetV3-FPN Inference
+        if self.model is not None and self.model_type == "fasterrcnn_fpn":
+            try:
+                import torch
+                import torchvision.transforms.functional as TF
+                import torchvision.ops as ops
+                from PIL import Image
+
+                rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                
+                # Dynamic aspect-ratio preserving scaling (cap max dimension to 1280 for CPU latency)
+                max_dim = max(h, w)
+                if max_dim > 1280:
+                    scale_factor = 1280.0 / max_dim
+                    infer_w = int(w * scale_factor)
+                    infer_h = int(h * scale_factor)
+                    infer_img = cv2.resize(rgb, (infer_w, infer_h))
+                else:
+                    scale_factor = 1.0
+                    infer_w, infer_h = w, h
+                    infer_img = rgb
+
+                img_tensor = TF.to_tensor(Image.fromarray(infer_img)).to(self.device)
+
+                with torch.no_grad():
+                    preds = self.model([img_tensor])
+
+                pred = preds[0]
+                raw_boxes = pred["boxes"].cpu()
+                raw_scores = pred["scores"].cpu()
+                raw_labels = pred["labels"].cpu()
+
+                # Filter NMS
+                keep = ops.batched_nms(raw_boxes, raw_scores, raw_labels, iou_threshold=0.38)
+                p_boxes = raw_boxes[keep].numpy()
+                p_scores = raw_scores[keep].numpy()
+                p_labels = raw_labels[keep].numpy()
+
+                # Precompute HSV for auto-rickshaw detection
+                hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+                mask_yellow = cv2.inRange(hsv, (14, 55, 55), (38, 255, 255))
+
+                coord_scale = 1.0 / scale_factor
+
+                traffic_coco_map = {
+                    "car": ("car", 0),
+                    "motorcycle": ("motorcycle", 1),
+                    "bus": ("bus", 3),
+                    "truck": ("truck", 4),
+                    "bicycle": ("bicycle", 5),
+                    "person": ("pedestrian", 6)
+                }
+
+                for b, s, l in zip(p_boxes, p_scores, p_labels):
+                    if s < effective_thresh:
+                        continue
+                    if l >= len(self.coco_categories):
+                        continue
+                    cat_name = self.coco_categories[l]
+                    if cat_name not in traffic_coco_map:
+                        continue
+
+                    target_name, target_id = traffic_coco_map[cat_name]
+
+                    # Scale back to original resolution
+                    x1 = float(max(0.0, b[0] * coord_scale))
+                    y1 = float(max(0.0, b[1] * coord_scale))
+                    x2 = float(min(float(w), b[2] * coord_scale))
+                    y2 = float(min(float(h), b[3] * coord_scale))
+
+                    bw = x2 - x1
+                    bh = y2 - y1
+                    if bw <= 4 or bh <= 4:
+                        continue
+
+                    # Specialized Indian traffic detection: Auto-rickshaw
+                    aspect = bw / max(1.0, bh)
+                    crop_y1 = max(0, int(y1))
+                    crop_y2 = min(h, int(y2))
+                    crop_x1 = max(0, int(x1))
+                    crop_x2 = min(w, int(x2))
+                    crop_yellow = mask_yellow[crop_y1:crop_y2, crop_x1:crop_x2]
+                    yellow_ratio = float((crop_yellow > 0).mean()) if crop_yellow.size > 0 else 0.0
+
+                    if target_name in ["car", "truck", "motorcycle"]:
+                        if yellow_ratio > 0.10 and 0.60 <= aspect <= 1.45 and (bw * bh) < (w * h * 0.07):
+                            target_name = "auto_rickshaw"
+                            target_id = 2
+
+                    detections.append(BoundingBox(
+                        x1=x1, y1=y1, x2=x2, y2=y2,
+                        confidence=float(s),
+                        class_id=target_id,
+                        class_name=target_name
+                    ))
+
+                if len(detections) > 0:
+                    return detections
+            except Exception as e:
+                print(f"[VehicleDetector] FasterRCNN inference error: {e}")
+
+        # SSDLite fallback if FasterRCNN not active
+        if self.model is not None and self.model_type == "ssdlite":
             try:
                 import torch
                 import torchvision.transforms.functional as TF
@@ -110,6 +259,7 @@ class VehicleDetector:
                     return detections
             except Exception:
                 pass
+
 
         # Color analysis / Edge density / Vehicle saliency heuristic for zero-dependency edge execution
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

@@ -192,7 +192,12 @@ async def analyze_photo(
 
     h, w = image.shape[:2]
     detections = pipeline.detector.detect(image, conf_threshold=confidence_threshold)
-    pipeline_result = pipeline.process_frame(image, is_red_light=is_red_light)
+    pipeline_result = pipeline.process_frame(
+        image,
+        is_red_light=is_red_light,
+        conf_threshold=confidence_threshold,
+        is_single_frame=True
+    )
 
     class_counts: Dict[str, int] = {}
     total_pcu = 0.0

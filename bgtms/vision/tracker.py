@@ -107,7 +107,7 @@ class MultiObjectTracker:
         cfg = get_classes()
         self.pcu_map = {int(k): v["pcu"] for k, v in cfg.get("classes", {}).items()}
 
-    def update(self, detections: List[BoundingBox]) -> List[TrackedVehicle]:
+    def update(self, detections: List[BoundingBox], is_single_frame: bool = False) -> List[TrackedVehicle]:
         self.frame_count += 1
 
         # 1. Predict new locations of existing trackers
@@ -154,10 +154,18 @@ class MultiObjectTracker:
         remaining_trackers: List[KalmanBoxTracker] = []
 
         for trk in self.trackers:
-            if trk.time_since_update < 1 and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
+            is_valid = (
+                trk.time_since_update < 1 and (
+                    is_single_frame or
+                    trk.hit_streak >= self.min_hits or
+                    self.frame_count <= self.min_hits
+                )
+            )
+            if is_valid:
                 # Valid confirmed track
                 is_emergency = trk.class_id == 7
                 pcu_val = self.pcu_map.get(trk.class_id, 1.0)
+
                 
                 active_vehicles.append(TrackedVehicle(
                     track_id=trk.id,

@@ -12,3 +12,6 @@ data/raw/
 data/extracted/
 data/*.zip
 data/processed/annotated_samples/
+bgtms/models/fasterrcnn_mobilenet_v3.pth
+data/bangalore_jam_test.jpg
+scripts/test_*.py

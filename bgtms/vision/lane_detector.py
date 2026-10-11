@@ -25,21 +25,40 @@ class LaneDetector:
             3: np.array([[1240, 1020], [1130, 600], [1470, 600], [1820, 1020]], dtype=np.int32) # Lane 3 (Right)
         }
 
-    def associate_vehicle_to_lane(self, vehicle: TrackedVehicle) -> Optional[int]:
+    def associate_vehicle_to_lane(self, vehicle: TrackedVehicle, frame_w: Optional[int] = None, frame_h: Optional[int] = None) -> Optional[int]:
+        w = frame_w if frame_w else self.w
+        h = frame_h if frame_h else self.h
+
         # Test vehicle bottom-center point (contact patch on road)
         bx = (vehicle.bbox.x1 + vehicle.bbox.x2) / 2.0
         by = vehicle.bbox.y2
         pt = (float(bx), float(by))
 
+        # Check polygons with resolution scaling
+        sx = w / float(self.w)
+        sy = h / float(self.h)
         for lane_id, poly in self.lane_polygons.items():
-            dist = cv2.pointPolygonTest(poly, pt, False)
+            scaled_poly = (poly.astype(float) * [sx, sy]).astype(np.int32)
+            dist = cv2.pointPolygonTest(scaled_poly, pt, False)
             if dist >= 0:
                 vehicle.lane_id = lane_id
                 return lane_id
 
-        # Fallback to closest lane if vehicle is filtering between lanes
-        vehicle.lane_id = 2  # Default central lane
+        # Fallback to realistic horizontal road partitions:
+        # Lane 1: Left 35% of carriageway
+        # Lane 2: Center 33% of carriageway
+        # Lane 3: Right 32% of carriageway
+        norm_x = bx / max(1.0, float(w))
+        if norm_x < 0.35:
+            lane_id = 1
+        elif norm_x < 0.68:
+            lane_id = 2
+        else:
+            lane_id = 3
+
+        vehicle.lane_id = lane_id
         return vehicle.lane_id
+
 
     def draw_lanes(self, image: np.ndarray, alpha: float = 0.25) -> np.ndarray:
         overlay = image.copy()

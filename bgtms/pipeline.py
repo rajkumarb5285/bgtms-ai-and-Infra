@@ -66,24 +66,32 @@ class TrafficIntelligencePipeline:
         self.all_incidents: List[IncidentAlert] = []
         self.frame_index = 0
 
-    def process_frame(self, frame: np.ndarray, is_red_light: bool = False) -> Dict[str, Any]:
+    def process_frame(
+        self,
+        frame: np.ndarray,
+        is_red_light: bool = False,
+        conf_threshold: Optional[float] = None,
+        is_single_frame: bool = False
+    ) -> Dict[str, Any]:
         """
         Processes a single video frame end-to-end.
         """
         start_time = time.time()
         self.frame_index += 1
+        fh, fw = frame.shape[:2]
 
         # 1. Detection
-        detections: List[BoundingBox] = self.detector.detect(frame)
+        detections: List[BoundingBox] = self.detector.detect(frame, conf_threshold=conf_threshold)
 
         # 2. Tracking
-        tracked_vehicles: List[TrackedVehicle] = self.tracker.update(detections)
+        tracked_vehicles: List[TrackedVehicle] = self.tracker.update(detections, is_single_frame=is_single_frame)
 
         # 3. Speed & Lane Association
         for veh in tracked_vehicles:
             veh.approach_id = self.approach_id
             self.speed_estimator.estimate_speed(veh)
-            self.lane_detector.associate_vehicle_to_lane(veh)
+            self.lane_detector.associate_vehicle_to_lane(veh, frame_w=fw, frame_h=fh)
+
 
         # 4. Traffic Density & Queues
         lane_metrics = self.density_engine.compute_lane_metrics(tracked_vehicles, num_lanes=3)
