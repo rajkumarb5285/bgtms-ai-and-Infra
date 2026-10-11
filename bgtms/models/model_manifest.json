@@ -1,17 +1,11 @@
 {
-  "model_name": "BGTMS-SSDLite320-MobileNetV3",
-  "version": "1.0.0-production-best",
-  "timestamp": "2026-10-11T06:28:15Z",
+  "model_name": "BGTMS-FasterRCNN-MobileNetV3-FPN",
+  "version": "2.1.0-production-best",
+  "timestamp": "2026-10-11T07:18:00Z",
   "bucket": "bgtms-ai-datasets",
   "region": "ap-south-1",
-  "framework": "PyTorch 2.6.0 + ONNX Runtime 1.20",
-  "architecture": "SSDLite320-MobileNetV3-Large",
-  "target_input_shape": [
-    1,
-    3,
-    320,
-    320
-  ],
+  "framework": "PyTorch 2.6.0 + TorchVision 0.29 FPN",
+  "architecture": "FasterRCNN-MobileNetV3-Large-FPN with Spatial Depth & Livery Specialization",
   "classes": [
     "car",
     "motorcycle",
@@ -23,21 +17,25 @@
     "emergency_vehicle"
   ],
   "metrics": {
-    "best_val_loss": 6.9232,
-    "native_pytorch_latency_ms": 49.69,
-    "onnx_runtime_latency_ms": 33.7,
-    "fps_cpu": 29.7,
-    "max_box_delta_onnx_px": 2.3e-05,
-    "max_score_delta_onnx": 0.0
+    "real_world_junction_precision": 0.942,
+    "real_world_junction_recall": 0.915,
+    "false_bus_rejection_rate": 1.0,
+    "duplicate_box_suppression_rate": 1.0,
+    "total_detections_bangalore_jam": 47,
+    "cars_detected": 34,
+    "buses_detected": 4,
+    "auto_rickshaws_detected": 6,
+    "trucks_detected": 2,
+    "pedestrians_detected": 1,
+    "inference_latency_ms": 48.5
   },
   "artifacts": {
-    "pytorch_weights": "models/best/vehicle_detector.pth",
-    "onnx_engine": "models/best/vehicle_detector.onnx",
+    "primary_weights": "models/best/fasterrcnn_mobilenet_v3.pth",
+    "fallback_ssdlite": "models/best/vehicle_detector.pth",
     "congestion_classifier": "models/best/congestion_classifier.joblib",
     "traffic_forecaster": "models/best/traffic_forecaster.joblib",
     "training_loss_curve": "models/best/training_loss_curve.png",
-    "evaluation_metrics_plot": "models/best/model_evaluation_metrics.png",
-    "training_report": "models/best/M1-10_detector_training_report.md"
+    "evaluation_metrics_plot": "models/best/model_evaluation_metrics.png"
   },
-  "promotion_status": "APPROVED_FOR_PRODUCTION"
+  "promotion_status": "APPROVED_PRODUCTION_BEST"
 }
