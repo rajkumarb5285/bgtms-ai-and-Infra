@@ -144,16 +144,9 @@ class VehicleDetector:
                 raw_scores = pred["scores"].cpu()
                 raw_labels = pred["labels"].cpu()
 
-                # Filter NMS
-                keep = ops.batched_nms(raw_boxes, raw_scores, raw_labels, iou_threshold=0.38)
-                p_boxes = raw_boxes[keep].numpy()
-                p_scores = raw_scores[keep].numpy()
-                p_labels = raw_labels[keep].numpy()
-
                 # Precompute HSV for auto-rickshaw detection
                 hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
                 mask_yellow = cv2.inRange(hsv, (14, 55, 55), (38, 255, 255))
-
                 coord_scale = 1.0 / scale_factor
 
                 traffic_coco_map = {
@@ -165,8 +158,16 @@ class VehicleDetector:
                     "person": ("pedestrian", 6)
                 }
 
-                for b, s, l in zip(p_boxes, p_scores, p_labels):
-                    if s < effective_thresh:
+                # Step 1: Collect all candidate vehicle detections
+                cand_boxes = []
+                cand_scores = []
+                cand_cats = []
+
+                # Allow slightly lower candidate threshold for high-recall NMS filtering
+                cand_thresh = max(0.25, effective_thresh * 0.80)
+
+                for b, s, l in zip(raw_boxes.numpy(), raw_scores.numpy(), raw_labels.numpy()):
+                    if s < cand_thresh:
                         continue
                     if l >= len(self.coco_categories):
                         continue
@@ -174,9 +175,7 @@ class VehicleDetector:
                     if cat_name not in traffic_coco_map:
                         continue
 
-                    target_name, target_id = traffic_coco_map[cat_name]
-
-                    # Scale back to original resolution
+                    # Scale to original coordinates
                     x1 = float(max(0.0, b[0] * coord_scale))
                     y1 = float(max(0.0, b[1] * coord_scale))
                     x2 = float(min(float(w), b[2] * coord_scale))
@@ -187,19 +186,69 @@ class VehicleDetector:
                     if bw <= 4 or bh <= 4:
                         continue
 
-                    # Specialized Indian traffic detection: Auto-rickshaw
+                    cand_boxes.append([x1, y1, x2, y2])
+                    cand_scores.append(float(s))
+                    cand_cats.append(cat_name)
+
+                if not cand_boxes:
+                    return []
+
+                # Step 2: Cross-Class NMS to eliminate duplicate overlapping boxes on the same vehicle
+                import torch
+                t_b = torch.tensor(np.array(cand_boxes), dtype=torch.float32)
+                t_s = torch.tensor(np.array(cand_scores), dtype=torch.float32)
+                keep_indices = ops.nms(t_b, t_s, iou_threshold=0.32).numpy()
+
+                # Step 3: Perspective Depth-Aware Vehicle Sizing & Fine-Tuned Classification
+                for idx in keep_indices:
+                    box = cand_boxes[idx]
+                    s = cand_scores[idx]
+                    c = cand_cats[idx]
+
+                    if s < effective_thresh:
+                        continue
+
+                    x1, y1, x2, y2 = box
+                    bw = x2 - x1
+                    bh = y2 - y1
+                    area = bw * bh
                     aspect = bw / max(1.0, bh)
-                    crop_y1 = max(0, int(y1))
-                    crop_y2 = min(h, int(y2))
-                    crop_x1 = max(0, int(x1))
-                    crop_x2 = min(w, int(x2))
+                    cy = (y1 + y2) / 2.0
+
+                    # Perspective baseline car area at vertical depth cy (normalized to image height)
+                    expected_car_area = (400.0 + (cy / max(1.0, float(h))) * 700.0) * (w * h / (568.0 * 295.0))
+
+                    # Crop for yellow / auto-rickshaw livery test
+                    crop_y1, crop_y2 = max(0, int(y1)), min(h, int(y2))
+                    crop_x1, crop_x2 = max(0, int(x1)), min(w, int(x2))
                     crop_yellow = mask_yellow[crop_y1:crop_y2, crop_x1:crop_x2]
                     yellow_ratio = float((crop_yellow > 0).mean()) if crop_yellow.size > 0 else 0.0
 
+                    target_name, target_id = traffic_coco_map[c]
+
+                    # Refinement A: Small cars falsely predicted as buses
+                    # Real city buses (BMTC, Volvo) are large (> 1.8x car area at that row depth)
+                    if c == "bus":
+                        if area < (expected_car_area * 1.75) and s < 0.75:
+                            # Object has car footprint, not bus footprint
+                            if yellow_ratio > 0.14 and area <= expected_car_area:
+                                target_name = "auto_rickshaw"
+                                target_id = 2
+                            else:
+                                target_name = "car"
+                                target_id = 0
+
+                    # Refinement B: Auto-rickshaw vs Delivery Mini-Truck
+                    # Auto-rickshaw must be compact (<= 1.15x expected car area)
+                    # A larger yellow vehicle (area > 1.25x car area) is a commercial delivery truck/van
                     if target_name in ["car", "truck", "motorcycle"]:
-                        if yellow_ratio > 0.10 and 0.60 <= aspect <= 1.45 and (bw * bh) < (w * h * 0.07):
-                            target_name = "auto_rickshaw"
-                            target_id = 2
+                        if yellow_ratio > 0.14 and 0.62 <= aspect <= 1.45:
+                            if area <= (expected_car_area * 1.15):
+                                target_name = "auto_rickshaw"
+                                target_id = 2
+                            else:
+                                target_name = "truck"
+                                target_id = 4
 
                     detections.append(BoundingBox(
                         x1=x1, y1=y1, x2=x2, y2=y2,
@@ -212,6 +261,7 @@ class VehicleDetector:
                     return detections
             except Exception as e:
                 print(f"[VehicleDetector] FasterRCNN inference error: {e}")
+
 
         # SSDLite fallback if FasterRCNN not active
         if self.model is not None and self.model_type == "ssdlite":
