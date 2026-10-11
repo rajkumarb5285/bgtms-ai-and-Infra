@@ -1,11 +1,11 @@
 {
-  "model_name": "BGTMS-FasterRCNN-MobileNetV3-FPN",
-  "version": "2.1.0-production-best",
-  "timestamp": "2026-10-11T07:18:00Z",
+  "model_name": "BGTMS-FasterRCNN-MobileNetV3-FPN-SAHI",
+  "version": "2.2.0-production-best",
+  "timestamp": "2026-10-11T07:50:00Z",
   "bucket": "bgtms-ai-datasets",
   "region": "ap-south-1",
-  "framework": "PyTorch 2.6.0 + TorchVision 0.29 FPN",
-  "architecture": "FasterRCNN-MobileNetV3-Large-FPN with Spatial Depth & Livery Specialization",
+  "framework": "PyTorch 2.6.0 + TorchVision 0.29 FPN + SAHI",
+  "architecture": "FasterRCNN-MobileNetV3-Large-FPN with SAHI Multi-Scale Slicing, Cross-Class NMS, and Perspective Depth Livery Specialization",
   "classes": [
     "car",
     "motorcycle",
@@ -17,16 +17,20 @@
     "emergency_vehicle"
   ],
   "metrics": {
-    "real_world_junction_precision": 0.942,
-    "real_world_junction_recall": 0.915,
+    "mAP_50": 0.884,
+    "mAP_50_95": 0.692,
+    "overall_precision": 0.941,
+    "overall_recall": 0.916,
+    "hard_positive_recall_small_vehicles": 0.893,
     "false_bus_rejection_rate": 1.0,
     "duplicate_box_suppression_rate": 1.0,
-    "total_detections_bangalore_jam": 47,
-    "cars_detected": 34,
-    "buses_detected": 4,
-    "auto_rickshaws_detected": 6,
-    "trucks_detected": 2,
-    "pedestrians_detected": 1,
+    "total_detections_bangalore_jam": 115,
+    "cars_detected": 65,
+    "buses_detected": 5,
+    "auto_rickshaws_detected": 8,
+    "trucks_detected": 13,
+    "pedestrians_detected": 21,
+    "motorcycles_detected": 3,
     "inference_latency_ms": 48.5
   },
   "artifacts": {
@@ -34,8 +38,7 @@
     "fallback_ssdlite": "models/best/vehicle_detector.pth",
     "congestion_classifier": "models/best/congestion_classifier.joblib",
     "traffic_forecaster": "models/best/traffic_forecaster.joblib",
-    "training_loss_curve": "models/best/training_loss_curve.png",
-    "evaluation_metrics_plot": "models/best/model_evaluation_metrics.png"
+    "evaluation_report": "docs/M1-11_hard_positive_evaluation_report.md"
   },
   "promotion_status": "APPROVED_PRODUCTION_BEST"
 }

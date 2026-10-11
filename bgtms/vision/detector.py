@@ -16,9 +16,10 @@ class VehicleDetector:
     Traffic Object Detector for Bengaluru's heterogeneous vehicle stream.
     """
 
-    def __init__(self, confidence_thresh: float = 0.35, iou_thresh: float = 0.45):
+    def __init__(self, confidence_thresh: float = 0.35, iou_thresh: float = 0.45, enable_sahi: bool = True):
         self.conf_thresh = confidence_thresh
         self.iou_thresh = iou_thresh
+        self.enable_sahi = enable_sahi
         
         self.classes_cfg = get_classes()
         self.classes = {int(k): v["name"] for k, v in self.classes_cfg.get("classes", {}).items()}
@@ -102,17 +103,18 @@ class VehicleDetector:
             'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
         ]
 
-    def detect(self, image: np.ndarray, conf_threshold: Optional[float] = None) -> List[BoundingBox]:
+    def detect(self, image: np.ndarray, conf_threshold: Optional[float] = None, enable_sahi: Optional[bool] = None) -> List[BoundingBox]:
         """
         Runs object detection on input frame (BGR numpy array).
-        Uses multiscale FPN deep learning model with Indian vehicle specialization,
-        and fallback to heuristic edge detection.
+        Uses multiscale FPN deep learning model with SAHI (Slicing Aided Hyper Inference)
+        for high-density distant traffic queues, with Indian vehicle specialization and fallback heuristics.
         """
         h, w = image.shape[:2]
         detections: List[BoundingBox] = []
         effective_thresh = conf_threshold if conf_threshold is not None else self.conf_thresh
+        use_sahi = self.enable_sahi if enable_sahi is None else enable_sahi
 
-        # 1. FasterRCNN-MobileNetV3-FPN Inference
+        # 1. FasterRCNN-MobileNetV3-FPN Inference with SAHI
         if self.model is not None and self.model_type == "fasterrcnn_fpn":
             try:
                 import torch
@@ -134,20 +136,83 @@ class VehicleDetector:
                     infer_w, infer_h = w, h
                     infer_img = rgb
 
-                img_tensor = TF.to_tensor(Image.fromarray(infer_img)).to(self.device)
+                coord_scale = 1.0 / scale_factor
 
+                all_raw_boxes = []
+                all_raw_scores = []
+                all_raw_labels = []
+
+                # Full frame forward pass
+                img_tensor = TF.to_tensor(Image.fromarray(infer_img)).to(self.device)
                 with torch.no_grad():
                     preds = self.model([img_tensor])
 
                 pred = preds[0]
-                raw_boxes = pred["boxes"].cpu()
-                raw_scores = pred["scores"].cpu()
-                raw_labels = pred["labels"].cpu()
+                fb = pred["boxes"].cpu().numpy()
+                fs = pred["scores"].cpu().numpy()
+                fl = pred["labels"].cpu().numpy()
+                for b, s, l in zip(fb, fs, fl):
+                    all_raw_boxes.append([b[0] * coord_scale, b[1] * coord_scale, b[2] * coord_scale, b[3] * coord_scale])
+                    all_raw_scores.append(float(s))
+                    all_raw_labels.append(int(l))
+
+                # Multi-Scale SAHI Sliding Window Slices for small & distant vehicles
+                if use_sahi and w >= 360 and h >= 180:
+                    tile_size = 280
+                    overlap = 0.25
+                    step = int(tile_size * (1 - overlap))
+
+                    slices = []
+                    for y0 in range(0, h, step):
+                        y1 = min(h, y0 + tile_size)
+                        if y1 - y0 < 60:
+                            continue
+                        for x0 in range(0, w, step):
+                            x1 = min(w, x0 + tile_size)
+                            if x1 - x0 < 60:
+                                continue
+                            slices.append((x0, y0, x1, y1))
+
+                    # If image is very large, dynamically increase tile size to keep slices <= 16
+                    if len(slices) > 16:
+                        tile_size = max(360, int(max(w, h) / 3))
+                        step = int(tile_size * (1 - overlap))
+                        slices = []
+                        for y0 in range(0, h, step):
+                            y1 = min(h, y0 + tile_size)
+                            if y1 - y0 < 60:
+                                continue
+                            for x0 in range(0, w, step):
+                                x1 = min(w, x0 + tile_size)
+                                if x1 - x0 < 60:
+                                    continue
+                                slices.append((x0, y0, x1, y1))
+
+                    # Batch slice inference in groups of 4
+                    batch_sz = 4
+                    for b_i in range(0, len(slices), batch_sz):
+                        sub_slices = slices[b_i:b_i + batch_sz]
+                        tile_tensors = []
+                        for (x0, y0, x1, y1) in sub_slices:
+                            crop = rgb[y0:y1, x0:x1]
+                            tile_tensors.append(TF.to_tensor(Image.fromarray(crop)).to(self.device))
+
+                        with torch.no_grad():
+                            tile_preds = self.model(tile_tensors)
+
+                        for tp, (x0, y0, x1, y1) in zip(tile_preds, sub_slices):
+                            tb = tp["boxes"].cpu().numpy()
+                            ts = tp["scores"].cpu().numpy()
+                            tl = tp["labels"].cpu().numpy()
+                            for b, s, l in zip(tb, ts, tl):
+                                if s >= 0.22:
+                                    all_raw_boxes.append([b[0] + x0, b[1] + y0, b[2] + x0, b[3] + y0])
+                                    all_raw_scores.append(float(s))
+                                    all_raw_labels.append(int(l))
 
                 # Precompute HSV for auto-rickshaw detection
                 hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
                 mask_yellow = cv2.inRange(hsv, (14, 55, 55), (38, 255, 255))
-                coord_scale = 1.0 / scale_factor
 
                 traffic_coco_map = {
                     "car": ("car", 0),
@@ -163,10 +228,10 @@ class VehicleDetector:
                 cand_scores = []
                 cand_cats = []
 
-                # Allow slightly lower candidate threshold for high-recall NMS filtering
-                cand_thresh = max(0.25, effective_thresh * 0.80)
+                # Dynamic candidate threshold for high-recall NMS filtering
+                cand_thresh = max(0.24, effective_thresh * 0.75)
 
-                for b, s, l in zip(raw_boxes.numpy(), raw_scores.numpy(), raw_labels.numpy()):
+                for b, s, l in zip(all_raw_boxes, all_raw_scores, all_raw_labels):
                     if s < cand_thresh:
                         continue
                     if l >= len(self.coco_categories):
@@ -175,11 +240,11 @@ class VehicleDetector:
                     if cat_name not in traffic_coco_map:
                         continue
 
-                    # Scale to original coordinates
-                    x1 = float(max(0.0, b[0] * coord_scale))
-                    y1 = float(max(0.0, b[1] * coord_scale))
-                    x2 = float(min(float(w), b[2] * coord_scale))
-                    y2 = float(min(float(h), b[3] * coord_scale))
+                    # Clip to frame boundaries
+                    x1 = float(max(0.0, min(float(w - 1), b[0])))
+                    y1 = float(max(0.0, min(float(h - 1), b[1])))
+                    x2 = float(max(x1 + 1, min(float(w), b[2])))
+                    y2 = float(max(y1 + 1, min(float(h), b[3])))
 
                     bw = x2 - x1
                     bh = y2 - y1
@@ -193,11 +258,10 @@ class VehicleDetector:
                 if not cand_boxes:
                     return []
 
-                # Step 2: Cross-Class NMS to eliminate duplicate overlapping boxes on the same vehicle
-                import torch
+                # Step 2: Cross-Class NMS to eliminate duplicate overlapping boxes
                 t_b = torch.tensor(np.array(cand_boxes), dtype=torch.float32)
                 t_s = torch.tensor(np.array(cand_scores), dtype=torch.float32)
-                keep_indices = ops.nms(t_b, t_s, iou_threshold=0.32).numpy()
+                keep_indices = ops.nms(t_b, t_s, iou_threshold=0.30).numpy()
 
                 # Step 3: Perspective Depth-Aware Vehicle Sizing & Fine-Tuned Classification
                 for idx in keep_indices:
@@ -215,7 +279,7 @@ class VehicleDetector:
                     aspect = bw / max(1.0, bh)
                     cy = (y1 + y2) / 2.0
 
-                    # Perspective baseline car area at vertical depth cy (normalized to image height)
+                    # Perspective baseline car area at vertical depth cy (normalized to reference frame)
                     expected_car_area = (400.0 + (cy / max(1.0, float(h))) * 700.0) * (w * h / (568.0 * 295.0))
 
                     # Crop for yellow / auto-rickshaw livery test
@@ -227,10 +291,9 @@ class VehicleDetector:
                     target_name, target_id = traffic_coco_map[c]
 
                     # Refinement A: Small cars falsely predicted as buses
-                    # Real city buses (BMTC, Volvo) are large (> 1.8x car area at that row depth)
+                    # Real city buses (BMTC, Volvo) are large (> 1.7x car area at that row depth)
                     if c == "bus":
-                        if area < (expected_car_area * 1.75) and s < 0.75:
-                            # Object has car footprint, not bus footprint
+                        if area < (expected_car_area * 1.70) and s < 0.75:
                             if yellow_ratio > 0.14 and area <= expected_car_area:
                                 target_name = "auto_rickshaw"
                                 target_id = 2
@@ -242,13 +305,19 @@ class VehicleDetector:
                     # Auto-rickshaw must be compact (<= 1.15x expected car area)
                     # A larger yellow vehicle (area > 1.25x car area) is a commercial delivery truck/van
                     if target_name in ["car", "truck", "motorcycle"]:
-                        if yellow_ratio > 0.14 and 0.62 <= aspect <= 1.45:
+                        if yellow_ratio > 0.14 and 0.60 <= aspect <= 1.45:
                             if area <= (expected_car_area * 1.15):
                                 target_name = "auto_rickshaw"
                                 target_id = 2
                             else:
                                 target_name = "truck"
                                 target_id = 4
+
+                    # Refinement C: Motorcycle check
+                    # Distinguishes narrow/compact vehicles in distant queue
+                    if target_name == "car" and (aspect < 0.65 or area < expected_car_area * 0.40) and cy < h * 0.55:
+                        target_name = "motorcycle"
+                        target_id = 1
 
                     detections.append(BoundingBox(
                         x1=x1, y1=y1, x2=x2, y2=y2,
