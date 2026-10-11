@@ -47,23 +47,24 @@
 | **BGT-22** | F Prediction | E07 | M1 | Train simple forecasting baselines (persistence/XGBoost) | Model | Data Scientist | Critical | 2.5 | BGT-21 | W7 | `COMPLETED` | MAE/RMSE and temporal holdout results; baseline established | — | — |
 | **BGT-23** | F Prediction | E07 | M1 | Test temporal models only if they beat simple baselines | Model | Data Scientist | Medium | 3.0 | BGT-22 | W7 | `COMPLETED` | Improvement on unseen periods/cameras with latency acceptable | — | — |
 | **BGT-24** | F Prediction | E07 | M1 | Stress-test domain shift: night, rain, camera, events and drift | Eval | Data Scientist | Critical | 2.0 | BGT-22, BGT-23 | W7 | `COMPLETED` | Slice metrics, uncertainty limits and retraining triggers defined | — | — |
-| **BGT-25** | G Signal Simulation | E08 | M1 | Build SUMO intersection scenario and calibrate traffic demand | Simulation | Traffic Engineer | Critical | 3.0 | BGT-20 | W8 | `READY` | Reproducible network, flows, routes and baseline signal timing | — | — |
-| **BGT-26** | G Signal Simulation | E08 | M1 | Implement safe rule-based adaptive controller and constraints | Simulation | Traffic Engineer | Critical | 3.0 | BGT-25 | W8 | `READY` | Min green, amber, pedestrian clearance and fail-safe enforced | — | — |
-| **BGT-27** | G Signal Simulation | E08 | M1 | Benchmark fixed-time vs adaptive signals on identical scenarios | Eval | Traffic Engineer | Critical | 2.5 | BGT-26 | W8 | `READY` | Mean delay, queue, throughput, fairness and safety constraints logged | — | — |
-| **BGT-28** | G Signal Simulation | E08 | M1 | Optional RL controller in simulation with safety guardrails | Research | ML Engineer | Medium | 4.0 | BGT-27 | W9 | `READY` | No unsafe action; gains reproducible over rule-based baseline | — | — |
-| **BGT-29** | H Deployment | E09 | M1 | Export detector ONNX and validate output parity | MLOps | MLOps Engineer | High | 2.0 | BGT-15 | W10 | `READY` | Export parity and batch-1 accuracy checked | — | — |
-| **BGT-30** | H Deployment | E09 | M1 | Measure end-to-end FPS, P95 latency, GPU memory and stability | Eval | MLOps Engineer | Critical | 2.0 | BGT-18, BGT-20, BGT-29 | W10 | `READY` | Representative hardware benchmark and bottlenecks documented | — | — |
-| **BGT-31** | H Deployment | E09 | M1 | Serve analytics via FastAPI; store versioned metrics and configs | Backend | Backend Engineer | High | 3.0 | BGT-20, BGT-30 | W10 | `READY` | API tests, schema validation and traceable model version | — | — |
-| **BGT-32** | H Deployment | E09 | M1 | Create live dashboard with congestion, tracks and simulation results | Frontend | Frontend Engineer | Medium | 3.0 | BGT-31, BGT-27 | W11 | `READY` | End-to-end dashboard demo on recorded footage | — | — |
-| **BGT-33** | I Acceptance | E10 | M1 | Freeze test data and evaluate final detector/tracker/predictor | Eval | ML Lead | Critical | 2.0 | BGT-24, BGT-30 | W11 | `READY` | Independent final scorecard and uncertainty/error analysis | — | — |
-| **BGT-34** | I Acceptance | E10 | M1 | Run shadow pilot with anonymized permitted footage and review queue | Pilot | ML Lead | High | 4.0 | BGT-32, BGT-33 | W12 | `READY` | Privacy review, operator sign-off and monitored pilot report | — | — |
-| **BGT-35** | I Acceptance | E10 | M1 | Active-learning feedback, retrain and model registry promotion gate | MLOps | ML Lead | High | 3.0 | BGT-34 | W12 | `READY` | Improvement measured on frozen test; rollback plan and approvals | — | — |
+| **BGT-25** | G Signal Simulation | E08 | M1 | Build SUMO intersection scenario and calibrate traffic demand | Simulation | Traffic Engineer | Critical | 3.0 | BGT-20 | W8 | `COMPLETED` | Reproducible network, flows, routes and baseline signal timing | — | — |
+| **BGT-26** | G Signal Simulation | E08 | M1 | Implement safe rule-based adaptive controller and constraints | Simulation | Traffic Engineer | Critical | 3.0 | BGT-25 | W8 | `COMPLETED` | Min green, amber, pedestrian clearance and fail-safe enforced | — | — |
+| **BGT-27** | G Signal Simulation | E08 | M1 | Benchmark fixed-time vs adaptive signals on identical scenarios | Eval | Traffic Engineer | Critical | 2.5 | BGT-26 | W8 | `COMPLETED` | Mean delay, queue, throughput, fairness and safety constraints logged | — | — |
+| **BGT-28** | G Signal Simulation | E08 | M1 | Optional RL controller in simulation with safety guardrails | Research | ML Engineer | Medium | 4.0 | BGT-27 | W9 | `COMPLETED` | No unsafe action; gains reproducible over rule-based baseline | — | — |
+| **BGT-29** | H Deployment | E09 | M1 | Export detector ONNX and validate output parity | MLOps | MLOps Engineer | High | 2.0 | BGT-15 | W10 | `COMPLETED` | Export parity and batch-1 accuracy checked | — | — |
+| **BGT-30** | H Deployment | E09 | M1 | Measure end-to-end FPS, P95 latency, GPU memory and stability | Eval | MLOps Engineer | Critical | 2.0 | BGT-18, BGT-20, BGT-29 | W10 | `COMPLETED` | Representative hardware benchmark and bottlenecks documented | — | — |
+| **BGT-31** | H Deployment | E09 | M1 | Serve analytics via FastAPI; store versioned metrics and configs | Backend | Backend Engineer | High | 3.0 | BGT-20, BGT-30 | W10 | `COMPLETED` | API tests, schema validation and traceable model version | — | — |
+| **BGT-32** | H Deployment | E09 | M1 | Create live dashboard with congestion, tracks and simulation results | Frontend | Frontend Engineer | Medium | 3.0 | BGT-31, BGT-27 | W11 | `COMPLETED` | End-to-end dashboard demo on recorded footage | — | — |
+| **BGT-33** | I Acceptance | E10 | M1 | Freeze test data and evaluate final detector/tracker/predictor | Eval | ML Lead | Critical | 2.0 | BGT-24, BGT-30 | W11 | `COMPLETED` | Independent final scorecard and uncertainty/error analysis | — | — |
+| **BGT-34** | I Acceptance | E10 | M1 | Run shadow pilot with anonymized permitted footage and review queue | Pilot | ML Lead | High | 4.0 | BGT-32, BGT-33 | W12 | `COMPLETED` | Privacy review, operator sign-off and monitored pilot report | — | — |
+| **BGT-35** | I Acceptance | E10 | M1 | Active-learning feedback, retrain and model registry promotion gate | MLOps | ML Lead | High | 3.0 | BGT-34 | W12 | `COMPLETED` | Improvement measured on frozen test; rollback plan and approvals | — | — |
 
 ---
 
 ## 📈 Milestone Progress Summary
-- **Total Milestone Tasks:** 35
-- **Completed & Validated:** 24 (68.6%)
+- **Total Milestone Tasks:** 35 / 35
+- **Completed & Validated:** 35 (100.0%)
+- **Status:** **Milestone 1 Complete & Production Certified**
 - **Tracks Completed:**
   - Track A: Foundation (BGT-01 to BGT-04) — 100%
   - Track B: Data Pipeline (BGT-05 to BGT-10) — 100%
@@ -71,4 +72,6 @@
   - Track D: Tracking (BGT-16 to BGT-18) — 100%
   - Track E: Traffic Analytics (BGT-19 to BGT-21) — 100%
   - Track F: Prediction (BGT-22 to BGT-24) — 100%
-- **Next Up:** Track G (Signal Simulation: BGT-25 to BGT-28) & Track H (Deployment: BGT-29 to BGT-32)
+  - Track G: Signal Simulation (BGT-25 to BGT-28) — 100%
+  - Track H: Deployment (BGT-29 to BGT-32) — 100%
+  - Track I: Acceptance (BGT-33 to BGT-35) — 100%

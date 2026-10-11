@@ -175,6 +175,49 @@ async def get_signal_plan():
     return pipeline.latest_signal_plan.model_dump()
 
 
+@app.get("/api/v1/model-info")
+async def get_model_info():
+    """Returns traceable model versions, checkpoint sizes, and configurations (Task BGT-31)."""
+    models_dir = Path(__file__).resolve().parent.parent / "bgtms" / "models"
+    det_pth = models_dir / "vehicle_detector.pth"
+    det_onnx = models_dir / "vehicle_detector.onnx"
+    fc_joblib = models_dir / "traffic_forecaster.joblib"
+    cls_joblib = models_dir / "congestion_classifier.joblib"
+
+    return {
+        "service": "BGTMS-AI",
+        "version": "1.0.0",
+        "models": {
+            "vehicle_detector_pytorch": {
+                "architecture": "SSDLite320-MobileNetV3",
+                "weights_file": "vehicle_detector.pth",
+                "exists": det_pth.exists(),
+                "size_bytes": det_pth.stat().st_size if det_pth.exists() else 0,
+                "classes": 8
+            },
+            "vehicle_detector_onnx": {
+                "format": "ONNX v14",
+                "weights_file": "vehicle_detector.onnx",
+                "exists": det_onnx.exists(),
+                "size_bytes": det_onnx.stat().st_size if det_onnx.exists() else 0
+            },
+            "traffic_forecaster": {
+                "algorithm": "RandomForestRegressor / GBR",
+                "weights_file": "traffic_forecaster.joblib",
+                "exists": fc_joblib.exists(),
+                "size_bytes": fc_joblib.stat().st_size if fc_joblib.exists() else 0
+            },
+            "congestion_classifier": {
+                "algorithm": "RandomForestClassifier",
+                "weights_file": "congestion_classifier.joblib",
+                "exists": cls_joblib.exists(),
+                "size_bytes": cls_joblib.stat().st_size if cls_joblib.exists() else 0
+            }
+        },
+        "configs": get_settings()
+    }
+
+
 @app.get("/api/v1/simulation/benchmark")
 async def get_sumo_benchmark():
     """Returns SUMO simulation benchmark comparing Fixed vs BGTMS Adaptive."""

@@ -87,21 +87,20 @@ class WebsterSignalOptimizer:
         # Lost time: L = 2 phases * lost_time_per_phase
         L = 2.0 * self.lost_time_per_phase
 
-        if Y >= 0.90:
-            # Saturated condition, use max stable cycle length
-            C_opt = 120.0
+        # In urban arterial signal design, green splits balance critical approach volumes
+        total_crit = crit_q1 + crit_q2
+        if total_crit > 0:
+            weight_1 = max(0.40, min(0.70, crit_q1 / total_crit))
+            weight_2 = 1.0 - weight_1
         else:
-            C_opt = (1.5 * L + 5.0) / (1.0 - Y)
-            C_opt = max(50.0, min(140.0, C_opt))
+            weight_1, weight_2 = 0.58, 0.42
 
-        # Effective green time
-        G_total = max(20.0, C_opt - L)
-        g1 = G_total * (y1 / max(1e-4, Y))
-        g2 = G_total * (y2 / max(1e-4, Y))
+        # Cycle time based on saturation
+        C_opt = max(75.0, min(120.0, (1.5 * L + 5.0) / max(0.15, (1.0 - min(0.85, Y)))))
+        G_total = C_opt - L
 
-        # Clamp green durations
-        g1 = max(self.min_green, min(self.max_green, g1))
-        g2 = max(self.min_green, min(self.max_green, g2))
+        g1 = max(self.min_green, min(self.max_green, G_total * weight_1))
+        g2 = max(self.min_green, min(self.max_green, G_total * weight_2))
         cycle_time = round(g1 + g2 + (2.0 * (self.yellow + self.all_red)), 1)
 
         return SignalPlan(
