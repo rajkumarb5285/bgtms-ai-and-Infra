@@ -92,6 +92,13 @@ export interface PhotoAnalysisResult {
   signal_plan?: SignalPlan;
   annotated_image: string;
   latency_ms: number;
+  continuous_learning?: {
+    capture_id?: string;
+    timestamp?: string;
+    s3_uri?: string;
+    is_hard_example?: boolean;
+    detections_count?: number;
+  };
 }
 
 export interface VideoTimelinePoint {
@@ -113,6 +120,13 @@ export interface VideoAnalysisResult {
   incidents: IncidentAlert[];
   peak_snapshot?: string;
   latency_ms: number;
+  continuous_learning?: {
+    capture_id?: string;
+    timestamp?: string;
+    s3_uri?: string;
+    is_hard_example?: boolean;
+    detections_count?: number;
+  };
 }
 
 export interface LiveTelemetryPayload {

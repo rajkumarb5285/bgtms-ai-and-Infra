@@ -15,3 +15,5 @@ data/processed/annotated_samples/
 bgtms/models/fasterrcnn_mobilenet_v3.pth
 data/bangalore_jam_test.jpg
 scripts/test_*.py
+data/continuous_learning/
+*.db

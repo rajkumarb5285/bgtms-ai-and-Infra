@@ -28,6 +28,8 @@ from bgtms.core.types import (
 )
 
 from bgtms.core.config import get_settings, get_classes
+from bgtms.mlops.learning_store import learning_store
+from bgtms.mlops.auto_retrainer import retrainer
 
 # Synthetic frame cache for simulation stream
 _sample_frames: List[np.ndarray] = []
@@ -177,11 +179,12 @@ def annotate_image(image: np.ndarray, detections: List[BoundingBox]) -> np.ndarr
 async def analyze_photo(
     file: UploadFile = File(...),
     confidence_threshold: float = Query(0.35, ge=0.05, le=0.95),
-    is_red_light: bool = Query(False)
+    is_red_light: bool = Query(False),
+    enable_sahi: bool = Query(True)
 ):
     """
     Comprehensive single-photo analysis: runs vehicle detection, IRC PCU density,
-    congestion classification, incident checking, and returns an annotated image base64.
+    congestion classification, incident checking, and logs to Continuous Learning DB + S3.
     """
     start_t = time.time()
     contents = await file.read()
@@ -191,7 +194,7 @@ async def analyze_photo(
         raise HTTPException(status_code=400, detail="Invalid image payload")
 
     h, w = image.shape[:2]
-    detections = pipeline.detector.detect(image, conf_threshold=confidence_threshold)
+    detections = pipeline.detector.detect(image, conf_threshold=confidence_threshold, enable_sahi=enable_sahi)
     pipeline_result = pipeline.process_frame(
         image,
         is_red_light=is_red_light,
@@ -205,6 +208,20 @@ async def analyze_photo(
         class_counts[d.class_name] = class_counts.get(d.class_name, 0) + 1
         pcu_w = PCU_BY_NAME.get(d.class_name, 1.0)
         total_pcu += pcu_w
+
+    # Continuous Learning Ingestion: Store capture in SQLite DB & S3
+    learning_meta = {}
+    try:
+        learning_meta = learning_store.record_capture(
+            image=image,
+            filename=file.filename or "photo.jpg",
+            media_type="photo",
+            detections=detections,
+            class_counts=class_counts,
+            total_pcu=round(total_pcu, 2)
+        )
+    except Exception as e:
+        print(f"[ContinuousLearning] Notice: {e}")
 
     annotated = annotate_image(image, detections)
     _, buffer = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
@@ -227,6 +244,7 @@ async def analyze_photo(
         "incidents": pipeline_result.get("new_incidents", []),
         "signal_plan": pipeline_result["signal_plan"],
         "annotated_image": b64_image,
+        "continuous_learning": learning_meta,
         "latency_ms": round(elapsed_ms, 1)
     }
 
@@ -238,8 +256,8 @@ async def analyze_video(
     max_seconds: int = Query(30, ge=3, le=120)
 ):
     """
-    Full video analysis: decodes video frames, tracks multi-object vehicles with ByteTrack,
-    aggregates unique traffic volume and PCU, identifies peak congestion, and generates a timeline.
+    High-Throughput Video Analysis: decodes frames, runs fast single-pass tracking,
+    aggregates unique traffic volume and PCU, and archives peak traffic frames to Continuous Learning store.
     """
     start_t = time.time()
 
@@ -261,7 +279,8 @@ async def analyze_video(
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration_sec = total_frames / max(1.0, fps)
 
-    step = max(1, int(fps / 5))
+    # High-Throughput Optimization: Sample every 0.5s (2 fps) with fast single-pass inference (no tile overhead)
+    step = max(1, int(fps * 0.5))
     max_frames_to_process = int(min(duration_sec, max_seconds) * fps)
 
     unique_tracks: Dict[int, str] = {}
@@ -269,6 +288,8 @@ async def analyze_video(
     video_incidents: List[Dict[str, Any]] = []
     peak_pcu = 0.0
     peak_frame_b64 = None
+    peak_raw_frame = None
+    peak_detections = []
 
     frame_idx = 0
     while cap.isOpened() and frame_idx < max_frames_to_process:
@@ -278,7 +299,8 @@ async def analyze_video(
 
         if frame_idx % step == 0:
             current_sec = round(frame_idx / fps, 1)
-            detections = pipeline.detector.detect(frame, conf_threshold=confidence_threshold)
+            # Ultra-fast single-pass detection for real-time video tracking
+            detections = pipeline.detector.detect(frame, conf_threshold=confidence_threshold, enable_sahi=False)
             tracked = pipeline.tracker.update(detections)
 
             frame_pcu = 0.0
@@ -301,6 +323,8 @@ async def analyze_video(
 
             if frame_pcu >= peak_pcu or peak_frame_b64 is None:
                 peak_pcu = frame_pcu
+                peak_raw_frame = frame.copy()
+                peak_detections = detections
                 annotated = annotate_image(frame, detections)
                 _, buffer = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
                 peak_frame_b64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode("utf-8")
@@ -319,6 +343,21 @@ async def analyze_video(
         class_breakdown[cls_name] = class_breakdown.get(cls_name, 0) + 1
         total_unique_pcu += PCU_BY_NAME.get(cls_name, 1.0)
 
+    # Ingest peak video scene into Continuous Learning Store
+    learning_meta = {}
+    if peak_raw_frame is not None:
+        try:
+            learning_meta = learning_store.record_capture(
+                image=peak_raw_frame,
+                filename=file.filename or "video.mp4",
+                media_type="video",
+                detections=peak_detections,
+                class_counts=class_breakdown,
+                total_pcu=round(peak_pcu, 2)
+            )
+        except Exception as e:
+            print(f"[ContinuousLearning] Video capture notice: {e}")
+
     elapsed_ms = (time.time() - start_t) * 1000.0
 
     return {
@@ -333,8 +372,24 @@ async def analyze_video(
         "timeline": timeline,
         "incidents": video_incidents,
         "peak_snapshot": peak_frame_b64,
+        "continuous_learning": learning_meta,
         "latency_ms": round(elapsed_ms, 1)
     }
+
+
+@app.get("/api/v1/learning/stats")
+async def get_continuous_learning_stats():
+    """Returns continuous learning dataset ingestion, S3 sync status, and retraining readiness."""
+    return learning_store.get_learning_stats()
+
+
+@app.post("/api/v1/learning/retrain")
+async def trigger_autonomous_retraining(epochs: int = Query(1, ge=1, le=5)):
+    """Triggers autonomous model retraining on accumulated SQLite/S3 samples with Experience Replay."""
+    result = retrainer.run_retraining(epochs=epochs, force=True)
+    if result.get("weights_promoted"):
+        pipeline.detector.reload_model_weights()
+    return result
 
 
 @app.get("/api/v1/sample/photo")
