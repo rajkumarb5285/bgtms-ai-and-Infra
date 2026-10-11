@@ -1,10 +1,6 @@
-"""
-BGTMS - Predictive AI Congestion Forecaster (M1-18)
-Predicts traffic congestion levels, expected queue lengths,
-and PCU flow across 5-min, 15-min, and 30-min horizons.
-"""
-
-from typing import Dict, List, Any
+import os
+import joblib
+from typing import Dict, List, Any, Optional
 import numpy as np
 from bgtms.core.types import ApproachState, CongestionLevel
 
@@ -12,13 +8,27 @@ from bgtms.core.types import ApproachState, CongestionLevel
 class CongestionPredictor:
     """
     Time-series forecasting model for short-to-medium horizon traffic state prediction.
+    Loads trained Random Forest / Gradient Boosting model from bgtms/models/traffic_forecaster.joblib.
     """
 
-    def __init__(self, history_len: int = 60):
+    def __init__(self, history_len: int = 60, model_path: Optional[str] = None):
         self.history_len = history_len
         self.pcu_history: List[float] = []
         self.queue_history: List[float] = []
         self.speed_history: List[float] = []
+        
+        if model_path is None:
+            model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "traffic_forecaster.joblib"))
+        
+        self.ml_model = None
+        self.feature_names = None
+        if os.path.exists(model_path):
+            try:
+                data = joblib.load(model_path)
+                self.ml_model = data.get("model")
+                self.feature_names = data.get("features")
+            except Exception:
+                self.ml_model = None
 
     def record_step(self, approach_state: ApproachState):
         self.pcu_history.append(approach_state.total_pcu)

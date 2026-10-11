@@ -1,9 +1,6 @@
-"""
-BGTMS - Machine Learning Congestion Classifier (M1-17)
-Classifies traffic into LOW, MEDIUM, HIGH, or CRITICAL using multi-attribute traffic features.
-"""
-
-from typing import List
+import os
+import joblib
+from typing import List, Optional
 import numpy as np
 from bgtms.core.types import CongestionLevel, LaneMetrics, ApproachState
 
@@ -11,16 +8,26 @@ from bgtms.core.types import CongestionLevel, LaneMetrics, ApproachState
 class CongestionClassifier:
     """
     ML and rule-ensemble congestion classifier calibrated for Bengaluru intersections.
+    Loads trained RandomForestClassifier from bgtms/models/congestion_classifier.joblib.
     """
 
-    def __init__(self):
-        # Feature weights calibrated on urban IRC standards
+    def __init__(self, model_path: Optional[str] = None):
         self.weights = {
             "speed_deficit": 0.35,
             "density": 0.25,
             "occupancy": 0.20,
             "queue_ratio": 0.20
         }
+        if model_path is None:
+            model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "congestion_classifier.joblib"))
+        
+        self.ml_model = None
+        if os.path.exists(model_path):
+            try:
+                data = joblib.load(model_path)
+                self.ml_model = data.get("model")
+            except Exception:
+                self.ml_model = None
 
     def classify(self, lanes: List[LaneMetrics], approach_id: str = "Approach_North", approach_name: str = "Silk Board North") -> ApproachState:
         if not lanes:

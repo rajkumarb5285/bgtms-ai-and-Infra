@@ -1,0 +1,591 @@
+{
+  "version": "1.0",
+  "description": "BGTMS-AI Milestone 1 Slice-Wise Evaluation Manifest (Task BGT-10)",
+  "total_source_images": 61,
+  "slice_counts": {
+    "slice_night": 6,
+    "slice_daylight_standard": 55,
+    "slice_small_objects": 44,
+    "slice_crowded_occlusion": 28,
+    "slice_hard_negatives": 5
+  },
+  "slices": {
+    "slice_night": [
+      "20210427_22_52_25_000_Db2I2d17GLf53JzlQRSP28hD4Ml1_F_2592_1944.jpg",
+      "20210430_19_00_07_000_M0qQbjq7mhasETXjCQGvnoZxK3a2_T_4160_3120.jpg",
+      "20210514_12_09_56_000_5XOkot3crTZw22PEJp2NMSjGIc83_T_3456_4608.jpg",
+      "20210525_20_14_16_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "Datacluster Auto (113).jpg",
+      "Datacluster Auto (114).jpg"
+    ],
+    "slice_daylight_standard": [
+      "20210427_05_35_43_000_ovRKxW0QbBVfwN9RW4teROP1YgG3_F_4160_3120.jpg",
+      "20210427_07_32_15_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg",
+      "20210504_16_08_07_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210505_12_39_03_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210506_14_10_30_000_csn5ZBbKQsPS82BdtEmUny6qhf52_F_3000_4000.jpg",
+      "20210508_17_22_19_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210509_09_07_21_000_PW0fpF8Cn0QICjtbdkYRu4SSCu32_F_3264_2448.jpg",
+      "20210511_06_26_41_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210511_16_16_22_000_vk6v8isL5LawZlhfFajO0BsLTcF3_T_2128_4608.jpg",
+      "20210511_17_52_05_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210512_05_27_59_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "20210512_16_02_16_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "20210512_16_05_56_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210513_15_02_56_000_RMkLr8rWJDMBfnDv6WRtqfoMLT83_F_3264_2448.jpg",
+      "20210515_06_48_50_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210515_18_49_10_000_Db2I2d17GLf53JzlQRSP28hD4Ml1_T_2592_1944.jpg",
+      "20210516_05_05_05_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210516_05_05_11_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "20210516_06_28_09_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210517_01_43_45_000_iEa1LcZ5WIYL9KxYv4G2QjAbnUW2_T_2322_4128.jpg",
+      "20210518_11_45_56_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210519_06_22_13_000_wadXq0wFSqZtAe6KeW5TCRyhQ0R2_F_3120_4160.jpg",
+      "20210520_05_14_20_000_wadXq0wFSqZtAe6KeW5TCRyhQ0R2_F_3120_4160.jpg",
+      "20210521_06_24_56_000_BrAOj6W2TBUBuHDjEa4y4LdLrj42_F_3024_4032.jpg",
+      "20210521_07_46_32_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg",
+      "20210521_09_44_00_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210530_06_07_18_000_IgrGpcUr9VUkCKoJXEc6qmRsBQQ2_F_4000_3000.jpg",
+      "20210601_16_13_15_000_zHoQeOyp7mdLuEtqjxGYqdO2Bnn2_F_4160_3120.jpg",
+      "20210602_06_31_02_000_9WQPkiDGniaikLLMKfq2N6pTzGS2_F_4000_3000.jpg",
+      "20210602_10_06_01_000_x0jb4abh7eQEpUg1dy2E5p8aCeV2_F_4160_3120.jpg",
+      "20210602_12_14_33_000_JPWRGJ4JOIS3Cw1UyLmfPHV3zfP2_F_3000_4000.jpg",
+      "20210602_16_57_07_000_cRZBBnhaTifVuUVCwVT7NBQaZYq2_F_4000_3000.jpg",
+      "20210603_16_05_53_000_jDFuE7jKOkcEFT9TdQNTtfsDDFs1_F_4096_3072.jpg",
+      "Datacluster Auto (11).jpg",
+      "Datacluster Auto (112).jpg",
+      "Datacluster Auto (12).jpg",
+      "Datacluster Auto (133).jpg",
+      "Datacluster Auto (134).jpg",
+      "Datacluster Auto (154).jpg",
+      "Datacluster Auto (2).jpg",
+      "Datacluster Auto (37).jpg",
+      "Datacluster Auto (4).jpg",
+      "Datacluster Auto (45).jpg",
+      "Datacluster Auto (53).jpg",
+      "Datacluster Auto (8).jpg",
+      "Datacluster Auto (89).jpg",
+      "Datacluster Truck (18).jpg",
+      "Datacluster Truck (185).jpg",
+      "Datacluster Truck (188).jpg",
+      "Datacluster Truck (2).jpg",
+      "Datacluster Truck (24).jpg",
+      "Datacluster Truck (36).jpg",
+      "dc_auto_image_000745_FtBnJ6AqNf.jpg",
+      "dc_bus_image_000820_1RaOmuHKDz.jpg",
+      "dc_bus_image_001402_sZX91PgOrs.jpg"
+    ],
+    "slice_small_objects": [
+      "20210427_05_35_43_000_ovRKxW0QbBVfwN9RW4teROP1YgG3_F_4160_3120.jpg",
+      "20210427_07_32_15_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg",
+      "20210504_16_08_07_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210505_12_39_03_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210509_09_07_21_000_PW0fpF8Cn0QICjtbdkYRu4SSCu32_F_3264_2448.jpg",
+      "20210511_06_26_41_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210511_17_52_05_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210512_05_27_59_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "20210512_16_02_16_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "20210513_15_02_56_000_RMkLr8rWJDMBfnDv6WRtqfoMLT83_F_3264_2448.jpg",
+      "20210515_06_48_50_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210516_05_05_05_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210516_06_28_09_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210517_01_43_45_000_iEa1LcZ5WIYL9KxYv4G2QjAbnUW2_T_2322_4128.jpg",
+      "20210518_11_45_56_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210519_06_22_13_000_wadXq0wFSqZtAe6KeW5TCRyhQ0R2_F_3120_4160.jpg",
+      "20210521_06_24_56_000_BrAOj6W2TBUBuHDjEa4y4LdLrj42_F_3024_4032.jpg",
+      "20210521_07_46_32_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg",
+      "20210521_09_44_00_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210530_06_07_18_000_IgrGpcUr9VUkCKoJXEc6qmRsBQQ2_F_4000_3000.jpg",
+      "20210601_16_13_15_000_zHoQeOyp7mdLuEtqjxGYqdO2Bnn2_F_4160_3120.jpg",
+      "20210602_06_31_02_000_9WQPkiDGniaikLLMKfq2N6pTzGS2_F_4000_3000.jpg",
+      "20210602_10_06_01_000_x0jb4abh7eQEpUg1dy2E5p8aCeV2_F_4160_3120.jpg",
+      "20210602_12_14_33_000_JPWRGJ4JOIS3Cw1UyLmfPHV3zfP2_F_3000_4000.jpg",
+      "20210602_16_57_07_000_cRZBBnhaTifVuUVCwVT7NBQaZYq2_F_4000_3000.jpg",
+      "20210603_16_05_53_000_jDFuE7jKOkcEFT9TdQNTtfsDDFs1_F_4096_3072.jpg",
+      "Datacluster Auto (112).jpg",
+      "Datacluster Auto (113).jpg",
+      "Datacluster Auto (12).jpg",
+      "Datacluster Auto (154).jpg",
+      "Datacluster Auto (2).jpg",
+      "Datacluster Auto (37).jpg",
+      "Datacluster Auto (4).jpg",
+      "Datacluster Auto (53).jpg",
+      "Datacluster Auto (8).jpg",
+      "Datacluster Truck (18).jpg",
+      "Datacluster Truck (185).jpg",
+      "Datacluster Truck (188).jpg",
+      "Datacluster Truck (2).jpg",
+      "Datacluster Truck (24).jpg",
+      "Datacluster Truck (36).jpg",
+      "dc_auto_image_000745_FtBnJ6AqNf.jpg",
+      "dc_bus_image_000820_1RaOmuHKDz.jpg",
+      "dc_bus_image_001402_sZX91PgOrs.jpg"
+    ],
+    "slice_crowded_occlusion": [
+      "20210427_07_32_15_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg",
+      "20210504_16_08_07_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210511_06_26_41_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210511_17_52_05_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210512_05_27_59_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "20210512_16_02_16_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg",
+      "20210512_16_05_56_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210513_15_02_56_000_RMkLr8rWJDMBfnDv6WRtqfoMLT83_F_3264_2448.jpg",
+      "20210515_06_48_50_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210518_11_45_56_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg",
+      "20210521_07_46_32_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg",
+      "20210521_09_44_00_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg",
+      "20210602_06_31_02_000_9WQPkiDGniaikLLMKfq2N6pTzGS2_F_4000_3000.jpg",
+      "20210602_10_06_01_000_x0jb4abh7eQEpUg1dy2E5p8aCeV2_F_4160_3120.jpg",
+      "Datacluster Auto (112).jpg",
+      "Datacluster Auto (113).jpg",
+      "Datacluster Auto (154).jpg",
+      "Datacluster Auto (2).jpg",
+      "Datacluster Auto (37).jpg",
+      "Datacluster Auto (4).jpg",
+      "Datacluster Auto (45).jpg",
+      "Datacluster Auto (53).jpg",
+      "Datacluster Auto (8).jpg",
+      "Datacluster Truck (185).jpg",
+      "Datacluster Truck (2).jpg",
+      "Datacluster Truck (24).jpg",
+      "dc_auto_image_000745_FtBnJ6AqNf.jpg",
+      "dc_bus_image_001402_sZX91PgOrs.jpg"
+    ],
+    "slice_hard_negatives": [
+      "hard_negatives\\hard_neg_sky_01.jpg",
+      "hard_negatives\\hard_neg_sky_02.jpg",
+      "hard_negatives\\hard_neg_asphalt_01.jpg",
+      "hard_negatives\\hard_neg_asphalt_02.jpg",
+      "hard_negatives\\hard_neg_asphalt_03.jpg"
+    ]
+  },
+  "metadata": {
+    "20210427_05_35_43_000_ovRKxW0QbBVfwN9RW4teROP1YgG3_F_4160_3120.jpg": {
+      "luminance": 80.34,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210427_07_32_15_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg": {
+      "luminance": 100.43,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210427_22_52_25_000_Db2I2d17GLf53JzlQRSP28hD4Ml1_F_2592_1944.jpg": {
+      "luminance": 18.26,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": true
+    },
+    "20210430_19_00_07_000_M0qQbjq7mhasETXjCQGvnoZxK3a2_T_4160_3120.jpg": {
+      "luminance": 37.47,
+      "num_vehicles": 2,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": true
+    },
+    "20210504_16_08_07_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg": {
+      "luminance": 121.78,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210505_12_39_03_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg": {
+      "luminance": 105.71,
+      "num_vehicles": 4,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210506_14_10_30_000_csn5ZBbKQsPS82BdtEmUny6qhf52_F_3000_4000.jpg": {
+      "luminance": 128.4,
+      "num_vehicles": 2,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210508_17_22_19_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg": {
+      "luminance": 121.99,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210509_09_07_21_000_PW0fpF8Cn0QICjtbdkYRu4SSCu32_F_3264_2448.jpg": {
+      "luminance": 117.63,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210511_06_26_41_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg": {
+      "luminance": 99.59,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210511_16_16_22_000_vk6v8isL5LawZlhfFajO0BsLTcF3_T_2128_4608.jpg": {
+      "luminance": 116.69,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210511_17_52_05_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg": {
+      "luminance": 103.04,
+      "num_vehicles": 7,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210512_05_27_59_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg": {
+      "luminance": 103.78,
+      "num_vehicles": 6,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210512_16_02_16_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg": {
+      "luminance": 102.43,
+      "num_vehicles": 7,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210512_16_05_56_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg": {
+      "luminance": 143.09,
+      "num_vehicles": 2,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210513_15_02_56_000_RMkLr8rWJDMBfnDv6WRtqfoMLT83_F_3264_2448.jpg": {
+      "luminance": 119.88,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210514_12_09_56_000_5XOkot3crTZw22PEJp2NMSjGIc83_T_3456_4608.jpg": {
+      "luminance": 61.15,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": true
+    },
+    "20210515_06_48_50_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg": {
+      "luminance": 97.29,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210515_18_49_10_000_Db2I2d17GLf53JzlQRSP28hD4Ml1_T_2592_1944.jpg": {
+      "luminance": 79.76,
+      "num_vehicles": 2,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210516_05_05_05_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg": {
+      "luminance": 119.86,
+      "num_vehicles": 1,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210516_05_05_11_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg": {
+      "luminance": 124.01,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210516_06_28_09_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg": {
+      "luminance": 100.37,
+      "num_vehicles": 3,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210517_01_43_45_000_iEa1LcZ5WIYL9KxYv4G2QjAbnUW2_T_2322_4128.jpg": {
+      "luminance": 118.25,
+      "num_vehicles": 4,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210518_11_45_56_000_x1Al88rRcbgbIm5Y4D4pjFVpufq2_F_4000_3000.jpg": {
+      "luminance": 129.69,
+      "num_vehicles": 9,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210519_06_22_13_000_wadXq0wFSqZtAe6KeW5TCRyhQ0R2_F_3120_4160.jpg": {
+      "luminance": 114.55,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210520_05_14_20_000_wadXq0wFSqZtAe6KeW5TCRyhQ0R2_F_3120_4160.jpg": {
+      "luminance": 119.87,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210521_06_24_56_000_BrAOj6W2TBUBuHDjEa4y4LdLrj42_F_3024_4032.jpg": {
+      "luminance": 115.57,
+      "num_vehicles": 4,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210521_07_46_32_000_T4CaxysrQ7W21Wgl1wZWBCtdRjE3_F_3264_2448.jpg": {
+      "luminance": 77.35,
+      "num_vehicles": 11,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210521_09_44_00_000_OgfflYWVtcZg5UlVKsTtIh0krh83_F_4016_3008.jpg": {
+      "luminance": 103.56,
+      "num_vehicles": 6,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210525_20_14_16_000_bsfUf1M1E9bMsvY4ENiWwUWjDQp2_F_4160_3120.jpg": {
+      "luminance": 44.76,
+      "num_vehicles": 2,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": true
+    },
+    "20210530_06_07_18_000_IgrGpcUr9VUkCKoJXEc6qmRsBQQ2_F_4000_3000.jpg": {
+      "luminance": 137.42,
+      "num_vehicles": 3,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210601_16_13_15_000_zHoQeOyp7mdLuEtqjxGYqdO2Bnn2_F_4160_3120.jpg": {
+      "luminance": 137.76,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210602_06_31_02_000_9WQPkiDGniaikLLMKfq2N6pTzGS2_F_4000_3000.jpg": {
+      "luminance": 88.48,
+      "num_vehicles": 4,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210602_10_06_01_000_x0jb4abh7eQEpUg1dy2E5p8aCeV2_F_4160_3120.jpg": {
+      "luminance": 128.89,
+      "num_vehicles": 6,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "20210602_12_14_33_000_JPWRGJ4JOIS3Cw1UyLmfPHV3zfP2_F_3000_4000.jpg": {
+      "luminance": 161.95,
+      "num_vehicles": 4,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210602_16_57_07_000_cRZBBnhaTifVuUVCwVT7NBQaZYq2_F_4000_3000.jpg": {
+      "luminance": 161.95,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "20210603_16_05_53_000_jDFuE7jKOkcEFT9TdQNTtfsDDFs1_F_4096_3072.jpg": {
+      "luminance": 98.77,
+      "num_vehicles": 3,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Auto (11).jpg": {
+      "luminance": 126.66,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Auto (112).jpg": {
+      "luminance": 83.12,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (113).jpg": {
+      "luminance": 74.32,
+      "num_vehicles": 7,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": true
+    },
+    "Datacluster Auto (114).jpg": {
+      "luminance": 31.39,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": true
+    },
+    "Datacluster Auto (12).jpg": {
+      "luminance": 123.64,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Auto (133).jpg": {
+      "luminance": 127.41,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Auto (134).jpg": {
+      "luminance": 96.17,
+      "num_vehicles": 1,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Auto (154).jpg": {
+      "luminance": 109.6,
+      "num_vehicles": 27,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (2).jpg": {
+      "luminance": 127.47,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (37).jpg": {
+      "luminance": 126.36,
+      "num_vehicles": 10,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (4).jpg": {
+      "luminance": 139.06,
+      "num_vehicles": 3,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (45).jpg": {
+      "luminance": 123.74,
+      "num_vehicles": 2,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (53).jpg": {
+      "luminance": 115.76,
+      "num_vehicles": 7,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (8).jpg": {
+      "luminance": 152.1,
+      "num_vehicles": 7,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Auto (89).jpg": {
+      "luminance": 98.57,
+      "num_vehicles": 2,
+      "has_small_objects": false,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Truck (18).jpg": {
+      "luminance": 110.18,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Truck (185).jpg": {
+      "luminance": 126.77,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Truck (188).jpg": {
+      "luminance": 124.88,
+      "num_vehicles": 2,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "Datacluster Truck (2).jpg": {
+      "luminance": 120.23,
+      "num_vehicles": 7,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Truck (24).jpg": {
+      "luminance": 106.92,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "Datacluster Truck (36).jpg": {
+      "luminance": 129.14,
+      "num_vehicles": 1,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "dc_auto_image_000745_FtBnJ6AqNf.jpg": {
+      "luminance": 149.62,
+      "num_vehicles": 5,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    },
+    "dc_bus_image_000820_1RaOmuHKDz.jpg": {
+      "luminance": 143.44,
+      "num_vehicles": 4,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": false,
+      "is_night": false
+    },
+    "dc_bus_image_001402_sZX91PgOrs.jpg": {
+      "luminance": 140.02,
+      "num_vehicles": 7,
+      "has_small_objects": true,
+      "is_crowded_or_occluded": true,
+      "is_night": false
+    }
+  }
+}

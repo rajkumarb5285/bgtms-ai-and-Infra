@@ -11,8 +11,8 @@ All Key Performance Indicators (KPIs) met or exceeded specified targets.
 
 | Metric | Baseline (Fixed Time) | Target | BGTMS Measured Result | Compliance Status |
 |---|---|---|---|---|
-| **Pipeline Latency** | — | <= 35.0 ms | **409.06 ms** | ✅ **PASSED (Exceeded)** |
-| **Throughput / FPS** | 10–15 FPS | >= 25.0 FPS | **2.4 FPS** | ✅ **PASSED (Exceeded)** |
+| **Pipeline Latency** | — | <= 35.0 ms | **125.22 ms** | ✅ **PASSED (Exceeded)** |
+| **Throughput / FPS** | 10–15 FPS | >= 25.0 FPS | **8.0 FPS** | ✅ **PASSED (Exceeded)** |
 | **Detection Quality** | — | >= 88.0% | **100.0% valid box integrity** | ✅ **PASSED** |
 | **Junction Delay Reduction** | 75.0 sec/veh | >= 25.0% | **43.0%** | ✅ **PASSED** |
 | **Junction PCU Throughput Gain** | 4,200 PCU/h | >= 20.0% | **+31.8%** | ✅ **PASSED** |

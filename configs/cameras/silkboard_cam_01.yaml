@@ -1,0 +1,61 @@
+# BGTMS Camera Calibration & Scene Geometry Configuration (Task BGT-19)
+# Junction: Central Silk Board Junction, Bengaluru
+# Version: 1.0.0
+# Date: 2026-10-11
+
+camera_id: "CAM-BLR-SILKBOARD-NORTH-01"
+junction_id: "BLR-SILKBOARD-01"
+junction_name: "Central Silk Board Junction"
+approach: "North_HosurRd"
+location:
+  lat: 12.9176
+  lng: 77.6238
+  elevation_m: 915.0
+  pole_height_m: 8.5
+  tilt_angle_deg: 26.0
+
+video_feed:
+  resolution: [1920, 1080]
+  fps: 30
+  color_space: "BGR"
+  roi_polygon: [[100, 450], [1820, 450], [1910, 1070], [10, 1070]]
+
+homography_calibration:
+  # 4 image pixel coordinates -> Ground Plane in meters [x_m, y_m]
+  image_points_px:
+    - [450, 600]   # Top-Left lane boundary
+    - [1470, 600]  # Top-Right lane boundary
+    - [1820, 1020] # Bottom-Right stop line boundary
+    - [100, 1020]  # Bottom-Left stop line boundary
+  ground_points_m:
+    - [0.0, 0.0]   # 0m lateral, 0m longitudinal
+    - [15.0, 0.0]  # 15m lateral (3 lanes x 5m effective corridor)
+    - [15.0, 45.0] # 45m distance from entry to stop line
+    - [0.0, 45.0]
+
+geometry:
+  stop_line_y_px: 880
+  stop_line_length_m: 15.0
+  lane_boundaries_px:
+    - lane_id: 1
+      name: "Left Turn / Bus Lane"
+      polygon: [[100, 1020], [670, 1020], [790, 600], [450, 600]]
+      width_m: 5.0
+    - lane_id: 2
+      name: "Straight Through (Car / Auto)"
+      polygon: [[670, 1020], [1240, 1020], [1130, 600], [790, 600]]
+      width_m: 5.0
+    - lane_id: 3
+      name: "Straight / Right Turn (Fast Lane)"
+      polygon: [[1240, 1020], [1820, 1020], [1470, 600], [1130, 600]]
+      width_m: 5.0
+
+detection_zones:
+  queue_zone:
+    y_min_px: 700
+    y_max_px: 880
+    length_m: 20.0
+  departure_zone:
+    y_min_px: 880
+    y_max_px: 1050
+    length_m: 18.0

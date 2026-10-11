@@ -80,13 +80,27 @@ class KalmanBoxTracker:
 
 class MultiObjectTracker:
     """
-    ByteTrack / DeepSORT tracking manager for Bengaluru traffic streams.
+    ByteTrack tracking manager for Bengaluru traffic streams.
+    Implements two-stage bipartite association:
+    Stage 1: High-confidence detections with active tracks.
+    Stage 2: Low-confidence detections with remaining tracks for occlusion recovery.
     """
 
-    def __init__(self, max_age: int = 30, min_hits: int = 2, iou_threshold: float = 0.3):
+    def __init__(
+        self,
+        max_age: int = 30,
+        min_hits: int = 2,
+        iou_threshold: float = 0.3,
+        high_score_thresh: float = 0.30,
+        low_score_thresh: float = 0.15,
+        iou_low_threshold: float = 0.20
+    ):
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = iou_threshold
+        self.high_score_thresh = high_score_thresh
+        self.low_score_thresh = low_score_thresh
+        self.iou_low_threshold = iou_low_threshold
         self.trackers: List[KalmanBoxTracker] = []
         self.frame_count = 0
         
@@ -100,19 +114,42 @@ class MultiObjectTracker:
         for trk in self.trackers:
             trk.predict()
 
-        # 2. Compute IoU cost matrix between detections and trackers
-        matched, unmatched_dets, unmatched_trks = self._associate(detections, self.trackers)
+        # Separate detections into high and low confidence (ByteTrack)
+        dets_high: List[BoundingBox] = []
+        dets_low: List[BoundingBox] = []
+        for d in detections:
+            if d.confidence >= self.high_score_thresh:
+                dets_high.append(d)
+            elif d.confidence >= self.low_score_thresh:
+                dets_low.append(d)
 
-        # 3. Update matched trackers
-        for d_idx, t_idx in matched:
-            self.trackers[t_idx].update(detections[d_idx])
+        # Fallback if all detections have uniform or low confidence
+        if not dets_high and detections:
+            dets_high = list(detections)
 
-        # 4. Create new trackers for unmatched detections
-        for d_idx in unmatched_dets:
-            trk = KalmanBoxTracker(detections[d_idx])
+        # Stage 1: Associate high confidence detections with all trackers
+        matched_1, unmatched_dets_1, unmatched_trks_1 = self._associate(
+            dets_high, self.trackers, self.iou_threshold
+        )
+        for d_idx, t_idx in matched_1:
+            self.trackers[t_idx].update(dets_high[d_idx])
+
+        # Stage 2: Associate remaining unmatched trackers with low confidence detections (occlusion recovery)
+        if unmatched_trks_1 and dets_low:
+            sub_trackers = [self.trackers[i] for i in unmatched_trks_1]
+            matched_2, _, _ = self._associate(
+                dets_low, sub_trackers, self.iou_low_threshold
+            )
+            for d_idx, sub_t_idx in matched_2:
+                real_t_idx = unmatched_trks_1[sub_t_idx]
+                self.trackers[real_t_idx].update(dets_low[d_idx])
+
+        # Stage 3: Create new trackers for unmatched high confidence detections
+        for d_idx in unmatched_dets_1:
+            trk = KalmanBoxTracker(dets_high[d_idx])
             self.trackers.append(trk)
 
-        # 5. Filter active tracks and prune dead ones
+        # Filter active tracks and prune dead ones
         active_vehicles: List[TrackedVehicle] = []
         remaining_trackers: List[KalmanBoxTracker] = []
 
@@ -139,7 +176,9 @@ class MultiObjectTracker:
         self.trackers = remaining_trackers
         return active_vehicles
 
-    def _associate(self, detections: List[BoundingBox], trackers: List[KalmanBoxTracker]):
+    def _associate(self, detections: List[BoundingBox], trackers: List[KalmanBoxTracker], iou_thresh: Optional[float] = None):
+        if iou_thresh is None:
+            iou_thresh = self.iou_threshold
         if len(trackers) == 0:
             return [], list(range(len(detections))), []
 
@@ -156,7 +195,6 @@ class MultiObjectTracker:
         while True:
             if len(unmatched_dets) == 0 or len(unmatched_trks) == 0:
                 break
-            # Find maximum IoU
             max_iou = 0.0
             best_d = -1
             best_t = -1
@@ -167,7 +205,7 @@ class MultiObjectTracker:
                         best_d = d
                         best_t = t
 
-            if max_iou >= self.iou_threshold:
+            if max_iou >= iou_thresh:
                 matched.append((best_d, best_t))
                 unmatched_dets.remove(best_d)
                 unmatched_trks.remove(best_t)
