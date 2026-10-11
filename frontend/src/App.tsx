@@ -16,6 +16,7 @@ export const App: React.FC = () => {
   const [photoResult, setPhotoResult] = useState<PhotoAnalysisResult | null>(null);
   const [originalImageSrc, setOriginalImageSrc] = useState<string | undefined>(undefined);
   const [videoResult, setVideoResult] = useState<VideoAnalysisResult | null>(null);
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
 
   const [isGreenCorridor, setIsGreenCorridor] = useState<boolean>(false);
   const [serverStatus, setServerStatus] = useState<'connected' | 'offline' | 'checking'>('checking');
@@ -78,6 +79,13 @@ export const App: React.FC = () => {
   const handleVideoUpload = async (file: File) => {
     setIsLoading(true);
     setErrorMessage(null);
+
+    // Track local video URL for instantaneous playback with play/pause
+    if (videoSrc && videoSrc.startsWith('blob:')) {
+      URL.revokeObjectURL(videoSrc);
+    }
+    const localUrl = URL.createObjectURL(file);
+    setVideoSrc(localUrl);
 
     try {
       const formData = new FormData();
@@ -201,7 +209,7 @@ export const App: React.FC = () => {
               isLoading={isLoading}
             />
 
-            {videoResult && <VideoResultsView result={videoResult} />}
+            {videoResult && <VideoResultsView result={videoResult} videoSrc={videoSrc} />}
           </div>
         )}
 

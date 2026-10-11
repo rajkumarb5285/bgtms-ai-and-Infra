@@ -267,6 +267,15 @@ async def analyze_video(
         content = await file.read()
         tmp.write(content)
 
+    # Cache latest analyzed video for frontend video playback fallback
+    try:
+        latest_video_path = Path("data/latest_analyzed_video.mp4")
+        latest_video_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(latest_video_path, "wb") as f_out:
+            f_out.write(content)
+    except Exception as e:
+        print(f"[VideoArchive] Notice: {e}")
+
     cap = cv2.VideoCapture(tmp_path)
     if not cap.isOpened():
         try:
@@ -413,6 +422,18 @@ async def get_sample_video():
     if video_path.exists():
         return FileResponse(str(video_path), media_type="video/mp4")
     raise HTTPException(status_code=404, detail="Sample video not found")
+
+
+@app.get("/api/v1/video/latest")
+async def get_latest_analyzed_video():
+    """Serves the most recently analyzed video file for frontend playback fallback."""
+    latest_video_path = Path("data/latest_analyzed_video.mp4")
+    if latest_video_path.exists():
+        return FileResponse(str(latest_video_path), media_type="video/mp4")
+    sample_path = Path("data/sample_traffic.mp4")
+    if sample_path.exists():
+        return FileResponse(str(sample_path), media_type="video/mp4")
+    raise HTTPException(status_code=404, detail="No video available")
 
 
 @app.post("/api/v1/process-frame")
