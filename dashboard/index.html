@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGTMS — Bengaluru Traffic Command & Control Centre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Command Navigation Bar -->
+    <header class="top-header">
+        <div class="brand">
+            <div class="brand-icon">
+                <span class="pulse-dot"></span>
+                <span class="icon-inner">🚦</span>
+            </div>
+            <div>
+                <h1 class="brand-title">BGTMS <span class="badge-live">LIVE COMMAND</span></h1>
+                <p class="brand-subtitle">Bengaluru Intelligent Traffic Management System • Central Silk Board Junction</p>
+            </div>
+        </div>
+
+        <div class="system-status-group">
+            <div class="status-item">
+                <span class="label">SYSTEM MODE</span>
+                <span class="value val-green" id="sysMode">WEBSTER ADAPTIVE</span>
+            </div>
+            <div class="status-item">
+                <span class="label">PIPELINE LATENCY</span>
+                <span class="value" id="latencyVal">18.4 ms (54 FPS)</span>
+            </div>
+            <div class="status-item">
+                <span class="label">NETWORK LINK</span>
+                <span class="value val-green" id="linkStatus">CONNECTED (WS)</span>
+            </div>
+            <button class="btn-corridor" id="btnGreenCorridor" onclick="toggleGreenCorridor()">
+                🚨 TRIGGER GREEN CORRIDOR
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Grid Dashboard Layout -->
+    <main class="dashboard-grid">
+        <!-- Left Section: Live CCTV Feed & Detection Overlay -->
+        <section class="panel cctv-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span class="title-icon">📹</span>
+                    <span>CCTV FEED: CAM-01 NORTH APPROACH (HOSUR ROAD)</span>
+                </div>
+                <div class="cctv-controls">
+                    <span class="cam-badge" id="cctvBadge">AUTO-DETECT • 3 LANES</span>
+                    <select id="camSelect" class="cam-select" onchange="changeCamera()">
+                        <option value="north">Silk Board — Hosur Rd Approach</option>
+                        <option value="south">Silk Board — Electronic City Flyover</option>
+                        <option value="east">Silk Board — HSR Layout (ORR)</option>
+                        <option value="west">Silk Board — BTM Layout 2nd Stage</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="cctvCanvas" width="1280" height="720"></canvas>
+                <div class="hud-overlay" id="hudOverlay">
+                    <div class="hud-pill"><span>DETECTIONS:</span> <strong id="hudDetCount">18</strong></div>
+                    <div class="hud-pill"><span>TOTAL PCU:</span> <strong id="hudPcuCount">24.5</strong></div>
+                    <div class="hud-pill"><span>AVG SPEED:</span> <strong id="hudSpeed">28.4 km/h</strong></div>
+                    <div class="hud-pill pill-alert" id="hudCorridorPill" style="display:none;">
+                        <span>EMERGENCY PREEMPTION ACTIVE</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lane Level Micro-Telemetry -->
+            <div class="lanes-bar-container">
+                <div class="lane-card">
+                    <div class="lane-header">
+                        <span>LANE 1 (LEFT / STRAIGHT)</span>
+                        <strong id="lane1Count">7 veh (6.5 PCU)</strong>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill fill-blue" id="lane1Bar" style="width: 45%;"></div>
+                    </div>
+                    <div class="lane-footer">
+                        <span>Queue: <strong id="lane1Queue">18m</strong></span>
+                        <span>Speed: <strong id="lane1Speed">26 km/h</strong></span>
+                    </div>
+                </div>
+
+                <div class="lane-card">
+                    <div class="lane-header">
+                        <span>LANE 2 (CENTRAL CORRIDOR)</span>
+                        <strong id="lane2Count">11 veh (12.0 PCU)</strong>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill fill-amber" id="lane2Bar" style="width: 72%;"></div>
+                    </div>
+                    <div class="lane-footer">
+                        <span>Queue: <strong id="lane2Queue">32m</strong></span>
+                        <span>Speed: <strong id="lane2Speed">18 km/h</strong></span>
+                    </div>
+                </div>
+
+                <div class="lane-card">
+                    <div class="lane-header">
+                        <span>LANE 3 (RIGHT TURN / BUS)</span>
+                        <strong id="lane3Count">5 veh (9.0 PCU)</strong>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill fill-purple" id="lane3Bar" style="width: 58%;"></div>
+                    </div>
+                    <div class="lane-footer">
+                        <span>Queue: <strong id="lane3Queue">24m</strong></span>
+                        <span>Speed: <strong id="lane3Speed">22 km/h</strong></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Section: Signal Timing & Intelligence -->
+        <aside class="side-column">
+            <!-- Signal Dial Card -->
+            <div class="panel signal-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon">⏱️</span>
+                        <span>ADAPTIVE SIGNAL CONTROLLER</span>
+                    </div>
+                    <span class="phase-tag" id="phaseTag">PHASE 1 • GREEN</span>
+                </div>
+
+                <div class="signal-body">
+                    <div class="signal-dial">
+                        <div class="dial-circle" id="dialCircle">
+                            <span class="dial-sec" id="dialSec">38</span>
+                            <span class="dial-unit">SEC REMAINING</span>
+                        </div>
+                    </div>
+
+                    <div class="signal-stats">
+                        <div class="stat-row">
+                            <span class="lbl">Optimized Cycle Length:</span>
+                            <strong class="val" id="cycleLen">94.0 s</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span class="lbl">North-South Phase Green:</span>
+                            <strong class="val" id="nsGreen">52.0 s</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span class="lbl">East-West Phase Green:</span>
+                            <strong class="val" id="ewGreen">34.0 s</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span class="lbl">Junction Delay Reduction:</span>
+                            <strong class="val val-green" id="delayRed">-34.8%</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Congestion Prediction Card -->
+            <div class="panel predict-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon">📈</span>
+                        <span>CONGESTION FORECAST (AI HORIZONS)</span>
+                    </div>
+                </div>
+
+                <div class="predict-cards">
+                    <div class="pred-card" id="pred5Card">
+                        <div class="pred-horizon">5 MIN AHEAD</div>
+                        <div class="pred-level val-amber" id="pred5Level">MEDIUM</div>
+                        <div class="pred-metrics">
+                            <span>PCU: <strong id="pred5Pcu">28.4</strong></span>
+                            <span>Queue: <strong id="pred5Q">22m</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="pred-card" id="pred15Card">
+                        <div class="pred-horizon">15 MIN AHEAD</div>
+                        <div class="pred-level val-orange" id="pred15Level">HIGH</div>
+                        <div class="pred-metrics">
+                            <span>PCU: <strong id="pred15Pcu">38.2</strong></span>
+                            <span>Queue: <strong id="pred15Q">36m</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="pred-card" id="pred30Card">
+                        <div class="pred-horizon">30 MIN AHEAD</div>
+                        <div class="pred-level val-red" id="pred30Level">CRITICAL</div>
+                        <div class="pred-metrics">
+                            <span>PCU: <strong id="pred30Pcu">49.0</strong></span>
+                            <span>Queue: <strong id="pred30Q">48m</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Incident & Violations Alert Stream -->
+            <div class="panel incidents-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon">⚠️</span>
+                        <span>INCIDENTS & VIOLATION DISPATCH</span>
+                    </div>
+                    <span class="badge-count" id="alertCount">3 ALERTS</span>
+                </div>
+
+                <div class="alerts-feed" id="alertsFeed">
+                    <!-- Dynamic Alert Items -->
+                    <div class="alert-item alert-critical">
+                        <div class="alert-meta">
+                            <span class="alert-type">EMERGENCY VEHICLE</span>
+                            <span class="alert-time">JUST NOW</span>
+                        </div>
+                        <p class="alert-desc">Ambulance #108 approaching Lane 2 from Hosur Rd. Priority corridor initiated.</p>
+                    </div>
+
+                    <div class="alert-item alert-warning">
+                        <div class="alert-meta">
+                            <span class="alert-type">RED LIGHT JUMP</span>
+                            <span class="alert-time">2m ago</span>
+                        </div>
+                        <p class="alert-desc">Motorcycle #8 crossed stop-line at 34 km/h during red light phase.</p>
+                    </div>
+
+                    <div class="alert-item alert-info">
+                        <div class="alert-meta">
+                            <span class="alert-type">QUEUE SHOCKWAVE</span>
+                            <span class="alert-time">4m ago</span>
+                        </div>
+                        <p class="alert-desc">Queue growth rate accelerated to +1.8 m/s on Lane 2.</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

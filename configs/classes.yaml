@@ -1,0 +1,72 @@
+# Harmonized Class Taxonomy and IRC PCU Weights for Bengaluru Traffic
+
+classes:
+  0:
+    name: car
+    pcu: 1.0
+    color: "#3B82F6"  # Blue
+    display: "Passenger Car"
+  1:
+    name: motorcycle
+    pcu: 0.5
+    color: "#10B981"  # Emerald Green
+    display: "2-Wheeler (Motorcycle/Scooter)"
+  2:
+    name: auto_rickshaw
+    pcu: 1.0
+    color: "#F59E0B"  # Amber
+    display: "Auto Rickshaw"
+  3:
+    name: bus
+    pcu: 3.0
+    color: "#8B5CF6"  # Purple
+    display: "BMTC / Private Bus"
+  4:
+    name: truck
+    pcu: 3.0
+    color: "#6B7280"  # Gray
+    display: "Commercial Truck / LCV"
+  5:
+    name: bicycle
+    pcu: 0.4
+    color: "#06B6D4"  # Cyan
+    display: "Bicycle"
+  6:
+    name: pedestrian
+    pcu: 0.2
+    color: "#EC4899"  # Pink
+    display: "Pedestrian"
+  7:
+    name: emergency_vehicle
+    pcu: 0.0
+    color: "#EF4444"  # Bright Red
+    display: "Emergency Vehicle (Ambulance/Fire/Police)"
+    priority: true
+
+# Mapping legacy or COCO class names to BGTMS taxonomy
+class_aliases:
+  car: car
+  automobile: car
+  suv: car
+  sedan: car
+  taxi: car
+  motorcycle: motorcycle
+  motorbike: motorcycle
+  scooter: motorcycle
+  two_wheeler: motorcycle
+  bike: motorcycle
+  autorickshaw: auto_rickshaw
+  auto_rickshaw: auto_rickshaw
+  auto: auto_rickshaw
+  three_wheeler: auto_rickshaw
+  bus: bus
+  truck: truck
+  lorry: truck
+  bicycle: bicycle
+  cycle: bicycle
+  pedestrian: pedestrian
+  person: pedestrian
+  ambulance: emergency_vehicle
+  fire_truck: emergency_vehicle
+  police_car: emergency_vehicle
+  emergency_vehicle: emergency_vehicle

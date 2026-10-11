@@ -1,0 +1,29 @@
+<routes>
+    <!-- Heterogeneous Bengaluru Vehicle Types -->
+    <vType id="two_wheeler" accel="2.8" decel="4.5" sigma="0.5" length="1.8" minGap="0.8" maxSpeed="15.0" guiShape="motorcycle" color="0,200,50"/>
+    <vType id="auto_rickshaw" accel="1.8" decel="3.5" sigma="0.5" length="2.6" minGap="1.2" maxSpeed="12.0" guiShape="passenger" color="255,180,0"/>
+    <vType id="car" accel="2.2" decel="4.0" sigma="0.5" length="4.2" minGap="2.0" maxSpeed="18.0" guiShape="passenger" color="50,120,240"/>
+    <vType id="bus" accel="1.0" decel="2.5" sigma="0.5" length="11.5" minGap="2.5" maxSpeed="12.0" guiShape="bus" color="180,50,220"/>
+    <vType id="truck" accel="0.9" decel="2.2" sigma="0.5" length="8.5" minGap="2.5" maxSpeed="11.0" guiShape="truck" color="120,120,120"/>
+    <vType id="ambulance" accel="3.0" decel="5.0" sigma="0.2" length="5.5" minGap="1.5" maxSpeed="22.0" guiShape="emergency" color="255,0,0"/>
+
+    <route id="r_N2S" edges="N2C C2S"/>
+    <route id="r_S2N" edges="S2C C2N"/>
+    <route id="r_E2W" edges="E2C C2W"/>
+    <route id="r_W2E" edges="W2C C2E"/>
+
+    <!-- High Density Mixed Traffic Flow -->
+    <flow id="flow_N_auto" type="auto_rickshaw" route="r_N2S" begin="0" end="3600" period="6"/>
+    <flow id="flow_N_bike" type="two_wheeler" route="r_N2S" begin="0" end="3600" period="3"/>
+    <flow id="flow_N_car" type="car" route="r_N2S" begin="0" end="3600" period="7"/>
+    <flow id="flow_N_bus" type="bus" route="r_N2S" begin="0" end="3600" period="25"/>
+
+    <flow id="flow_S_auto" type="auto_rickshaw" route="r_S2N" begin="0" end="3600" period="8"/>
+    <flow id="flow_S_bike" type="two_wheeler" route="r_S2N" begin="0" end="3600" period="4"/>
+    <flow id="flow_S_car" type="car" route="r_S2N" begin="0" end="3600" period="9"/>
+
+    <flow id="flow_E_car" type="car" route="r_E2W" begin="0" end="3600" period="10"/>
+    <flow id="flow_E_bike" type="two_wheeler" route="r_E2W" begin="0" end="3600" period="5"/>
+    <flow id="flow_W_car" type="car" route="r_W2E" begin="0" end="3600" period="11"/>
+    <flow id="flow_W_bike" type="two_wheeler" route="r_W2E" begin="0" end="3600" period="6"/>
+</routes>

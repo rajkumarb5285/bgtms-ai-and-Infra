@@ -1,0 +1,64 @@
+# Bengaluru Traffic Management System Configuration
+
+system:
+  name: "BGTMS-AI"
+  version: "1.0.0"
+  junction_id: "BLR-SILKBOARD-01"
+  junction_name: "Central Silk Board Junction"
+  city: "Bengaluru"
+  timezone: "Asia/Kolkata"
+
+s3:
+  bucket_name: "bgtms-ai-datasets"
+  region: "ap-south-1"
+  profile: "roadsense"
+  raw_prefix: "raw/"
+  processed_prefix: "processed/"
+
+vision:
+  model_type: "yolo"
+  weights_path: "models/bgtms_yolov8_best.pt"
+  confidence_threshold: 0.35
+  iou_threshold: 0.45
+  input_size: [640, 640]
+  device: "cpu" # Auto switches to cuda if available
+  tracking:
+    tracker_type: "bytetrack"
+    track_thresh: 0.45
+    track_buffer: 40
+    match_thresh: 0.8
+  homography:
+    # 4 source pixel coordinates on 1920x1080 -> mapped to real world rectangle in meters (e.g. 15m x 45m)
+    src_points: [[450, 600], [1470, 600], [1820, 1020], [100, 1020]]
+    dst_points: [[0, 0], [15, 0], [15, 45], [0, 45]] # width x length in meters
+
+traffic:
+  approach_names: ["North_HosurRd", "South_ElectronicCity", "East_HSRLayout", "West_BTM"]
+  lane_count_per_approach: 3
+  stop_line_y: 880
+  queue_threshold_speed_kmh: 3.0
+  shockwave_queue_growth_threshold: 1.5 # meters / sec
+  congestion_thresholds:
+    low: 15.0 # PCU per lane / km
+    medium: 35.0
+    high: 60.0 # > 60 is CRITICAL
+
+incidents:
+  sudden_deceleration_kmh_s: 25.0
+  stalled_duration_sec: 35.0
+  wrong_way_angle_tolerance: 120.0 # degrees deviation
+  red_light_speed_threshold_kmh: 5.0
+
+signal:
+  mode: "adaptive_webster" # options: fixed, adaptive_webster, rl_dqn
+  min_green_sec: 15
+  max_green_sec: 75
+  yellow_sec: 4
+  all_red_sec: 2
+  saturation_flow_pcu_per_hour: 1800
+  green_corridor_duration_sec: 60
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false

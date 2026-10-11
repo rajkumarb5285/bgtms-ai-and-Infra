@@ -1,0 +1,20 @@
+{
+  "total_images": 61,
+  "seed": 42,
+  "splits": {
+    "train_count": 42,
+    "val_count": 9,
+    "test_count": 10
+  },
+  "classes": {
+    "0": "car",
+    "1": "motorcycle",
+    "2": "auto_rickshaw",
+    "3": "bus",
+    "4": "truck",
+    "5": "bicycle",
+    "6": "pedestrian",
+    "7": "emergency_vehicle"
+  },
+  "dataset_yaml": "data\\splits\\dataset.yaml"
+}

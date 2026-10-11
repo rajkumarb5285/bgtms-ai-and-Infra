@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  bgtms-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: bgtms-traffic-engine
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AWS_DEFAULT_REGION=ap-south-1
+      - S3_BUCKET_NAME=bgtms-ai-datasets
+    volumes:
+      - ../data:/app/data
+      - ../configs:/app/configs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - bgtms-net
+
+networks:
+  bgtms-net:
+    driver: bridge

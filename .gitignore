@@ -1,0 +1,14 @@
+# Virtual environments & caches
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.log
+
+# Large data archives and raw datasets (stored in S3: s3://bgtms-ai-datasets/)
+*.zip
+data/raw/
+data/extracted/
+data/*.zip
+data/processed/annotated_samples/

@@ -1,0 +1,13 @@
+path: C:/Users/Rajkumar Pandey/.gemini/antigravity-ide/scratch/bgtms-ai-and-Infra/data
+train: C:/Users/Rajkumar Pandey/.gemini/antigravity-ide/scratch/bgtms-ai-and-Infra/data/splits/train.txt
+val: C:/Users/Rajkumar Pandey/.gemini/antigravity-ide/scratch/bgtms-ai-and-Infra/data/splits/val.txt
+test: C:/Users/Rajkumar Pandey/.gemini/antigravity-ide/scratch/bgtms-ai-and-Infra/data/splits/test.txt
+names:
+  0: car
+  1: motorcycle
+  2: auto_rickshaw
+  3: bus
+  4: truck
+  5: bicycle
+  6: pedestrian
+  7: emergency_vehicle
