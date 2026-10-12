@@ -76,10 +76,13 @@ export const App: React.FC = () => {
     }
   };
 
+  const [lastVideoFile, setLastVideoFile] = useState<File | null>(null);
+
   // Handle Video Upload
   const handleVideoUpload = async (file: File) => {
     setIsLoading(true);
     setErrorMessage(null);
+    setLastVideoFile(file);
 
     // Track local video URL for instantaneous playback with play/pause
     if (videoSrc && videoSrc.startsWith('blob:')) {
@@ -93,7 +96,7 @@ export const App: React.FC = () => {
       formData.append('file', file);
 
       const res = await fetch(
-        `/api/v1/analyze/video?confidence_threshold=${confidenceThreshold}&max_seconds=30`,
+        `/api/v1/analyze/video?confidence_threshold=${confidenceThreshold}&max_seconds=60`,
         {
           method: 'POST',
           body: formData,
@@ -211,7 +214,16 @@ export const App: React.FC = () => {
               isLoading={isLoading}
             />
 
-            {videoResult && <VideoResultsView result={videoResult} videoSrc={videoSrc} />}
+            {videoResult && (
+              <VideoResultsView
+                result={videoResult}
+                videoSrc={videoSrc}
+                onRescan={() => {
+                  if (lastVideoFile) handleVideoUpload(lastVideoFile);
+                  else handleSampleVideoLoad();
+                }}
+              />
+            )}
           </div>
         )}
 

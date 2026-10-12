@@ -259,7 +259,7 @@ async def analyze_photo(
 async def analyze_video(
     file: UploadFile = File(...),
     confidence_threshold: float = Query(0.35, ge=0.05, le=0.95),
-    max_seconds: int = Query(30, ge=3, le=120)
+    max_seconds: int = Query(60, ge=3, le=300)
 ):
     """
     High-Throughput Video Analysis: decodes frames, runs fast single-pass tracking,
@@ -302,6 +302,7 @@ async def analyze_video(
     timeline: List[Dict[str, Any]] = []
     video_incidents: List[Dict[str, Any]] = []
     peak_pcu = 0.0
+    peak_second = 0.0
     peak_frame_b64 = None
     peak_raw_frame = None
     peak_detections = []
@@ -319,9 +320,20 @@ async def analyze_video(
             tracked = pipeline.tracker.update(detections)
 
             frame_pcu = 0.0
+            frame_boxes = []
+            h_f, w_f = frame.shape[:2]
             for t in tracked:
                 unique_tracks[t.track_id] = t.class_name
                 frame_pcu += t.pcu
+                frame_boxes.append({
+                    "track_id": int(t.track_id),
+                    "class_name": str(t.class_name),
+                    "confidence": round(float(t.bbox.confidence), 2),
+                    "norm_x1": round(float(max(0.0, min(1.0, t.bbox.x1 / max(1, w_f)))), 4),
+                    "norm_y1": round(float(max(0.0, min(1.0, t.bbox.y1 / max(1, h_f)))), 4),
+                    "norm_x2": round(float(max(0.0, min(1.0, t.bbox.x2 / max(1, w_f)))), 4),
+                    "norm_y2": round(float(max(0.0, min(1.0, t.bbox.y2 / max(1, h_f)))), 4)
+                })
 
             acc = pipeline.accident_detector.check_incidents(tracked)
             if acc:
@@ -333,11 +345,13 @@ async def analyze_video(
             timeline.append({
                 "second": current_sec,
                 "vehicles": len(tracked),
-                "pcu": round(frame_pcu, 2)
+                "pcu": round(frame_pcu, 2),
+                "boxes": frame_boxes
             })
 
             if frame_pcu >= peak_pcu or peak_frame_b64 is None:
                 peak_pcu = frame_pcu
+                peak_second = current_sec
                 peak_raw_frame = frame.copy()
                 peak_detections = detections
                 annotated = annotate_image(frame, detections)
@@ -383,6 +397,7 @@ async def analyze_video(
         "total_unique_vehicles": len(unique_tracks),
         "total_unique_pcu": round(total_unique_pcu, 2),
         "peak_pcu": round(peak_pcu, 2),
+        "peak_second": round(peak_second, 1),
         "class_breakdown": class_breakdown,
         "timeline": timeline,
         "incidents": video_incidents,

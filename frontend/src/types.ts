@@ -101,10 +101,21 @@ export interface PhotoAnalysisResult {
   };
 }
 
+export interface VideoBoxItem {
+  track_id: number;
+  class_name: string;
+  confidence: number;
+  norm_x1: number;
+  norm_y1: number;
+  norm_x2: number;
+  norm_y2: number;
+}
+
 export interface VideoTimelinePoint {
   second: number;
   vehicles: number;
   pcu: number;
+  boxes?: VideoBoxItem[];
 }
 
 export interface VideoAnalysisResult {
@@ -115,6 +126,7 @@ export interface VideoAnalysisResult {
   total_unique_vehicles: number;
   total_unique_pcu: number;
   peak_pcu: number;
+  peak_second?: number;
   class_breakdown: Record<string, number>;
   timeline: VideoTimelinePoint[];
   incidents: IncidentAlert[];

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import type { VideoAnalysisResult } from '../types';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type { VideoAnalysisResult, VideoTimelinePoint, VideoBoxItem } from '../types';
 import {
   TrendingUp,
   Layers,
@@ -18,16 +18,37 @@ import {
   SkipBack,
   Target,
   Film,
-  Download
+  Download,
+  Eye,
+  EyeOff,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 
 interface VideoResultsViewProps {
   result: VideoAnalysisResult;
   videoSrc?: string | null;
+  onRescan?: () => void;
 }
 
-export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, videoSrc }) => {
+const CLASS_COLORS: Record<string, { stroke: string; fill: string; icon: string }> = {
+  car: { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.22)', icon: '🚗' },
+  motorcycle: { stroke: '#10b981', fill: 'rgba(16, 185, 129, 0.22)', icon: '🛵' },
+  auto_rickshaw: { stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.22)', icon: '🛺' },
+  bus: { stroke: '#a855f7', fill: 'rgba(168, 85, 247, 0.22)', icon: '🚌' },
+  truck: { stroke: '#94a3b8', fill: 'rgba(148, 163, 184, 0.22)', icon: '🚛' },
+  bicycle: { stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.22)', icon: '🚲' },
+  pedestrian: { stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.22)', icon: '🚶' },
+  emergency_vehicle: { stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.35)', icon: '🚑' },
+};
+
+export const VideoResultsView: React.FC<VideoResultsViewProps> = ({
+  result,
+  videoSrc,
+  onRescan
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fallback to latest video endpoint if local blob URL is missing
@@ -40,12 +61,22 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [videoError, setVideoError] = useState<boolean>(false);
+  const [showAiBoxes, setShowAiBoxes] = useState<boolean>(true);
+  const [liveBoxesCount, setLiveBoxesCount] = useState<number>(0);
+  const [isRescanning, setIsRescanning] = useState<boolean>(false);
+
+  // Check if timeline contains pre-computed frame bounding boxes
+  const hasBoxesInTimeline = Boolean(
+    result.timeline && result.timeline.some((p) => p.boxes && p.boxes.length > 0)
+  );
 
   // Compute peak congestion point
   const peakPoint = result.timeline && result.timeline.length > 0
     ? result.timeline.reduce((max, p) => p.pcu > max.pcu ? p : max, result.timeline[0])
     : null;
-  const peakSecond = peakPoint ? peakPoint.second : 0;
+  const peakSecond = result.peak_second !== undefined
+    ? result.peak_second
+    : (peakPoint ? peakPoint.second : 0);
 
   // Format MM:SS helper
   const formatTime = (seconds: number) => {
@@ -54,6 +85,91 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Find nearest timeline point for current playback second
+  const findClosestPoint = useCallback((sec: number): VideoTimelinePoint | null => {
+    if (!result.timeline || result.timeline.length === 0) return null;
+    let closest = result.timeline[0];
+    let minDiff = Math.abs(sec - closest.second);
+    for (let i = 1; i < result.timeline.length; i++) {
+      const diff = Math.abs(sec - result.timeline[i].second);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = result.timeline[i];
+      }
+    }
+    return closest;
+  }, [result.timeline]);
+
+  // Draw real-time detection bounding boxes on video overlay canvas
+  const drawBoxesOnCanvas = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || viewMode !== 'video') return;
+
+    const rect = video.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    if (canvas.width !== Math.round(rect.width) || canvas.height !== Math.round(rect.height)) {
+      canvas.width = Math.round(rect.width);
+      canvas.height = Math.round(rect.height);
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!showAiBoxes) {
+      setLiveBoxesCount(0);
+      return;
+    }
+
+    const closest = findClosestPoint(video.currentTime);
+    const boxes: VideoBoxItem[] = closest?.boxes || [];
+    setLiveBoxesCount(boxes.length);
+
+    boxes.forEach((box) => {
+      const x = box.norm_x1 * canvas.width;
+      const y = box.norm_y1 * canvas.height;
+      const w = Math.max(14, (box.norm_x2 - box.norm_x1) * canvas.width);
+      const h = Math.max(14, (box.norm_y2 - box.norm_y1) * canvas.height);
+
+      const colorData = CLASS_COLORS[box.class_name] || {
+        stroke: '#38bdf8',
+        fill: 'rgba(56, 189, 248, 0.22)',
+        icon: '🚘'
+      };
+
+      // Shaded box fill
+      ctx.fillStyle = colorData.fill;
+      ctx.fillRect(x, y, w, h);
+
+      // Neon glowing border
+      ctx.strokeStyle = colorData.stroke;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = colorData.stroke;
+      ctx.shadowBlur = 6;
+      ctx.strokeRect(x, y, w, h);
+      ctx.shadowBlur = 0;
+
+      // Label chip above bounding box
+      const label = `${colorData.icon} ${box.class_name.replace(/_/g, ' ').toUpperCase()} #${box.track_id} ${(box.confidence * 100).toFixed(0)}%`;
+      ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+      const textWidth = ctx.measureText(label).width;
+      const tagH = 18;
+      const tagW = textWidth + 12;
+      const tagY = Math.max(0, y - tagH - 2);
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.fillRect(x, tagY, tagW, tagH);
+      ctx.strokeStyle = colorData.stroke;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, tagY, tagW, tagH);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, x + 6, tagY + 13);
+    });
+  }, [findClosestPoint, showAiBoxes, viewMode]);
+
   // Video event listeners
   useEffect(() => {
     const video = videoRef.current;
@@ -61,17 +177,25 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
+      drawBoxesOnCanvas();
     };
 
     const handleLoadedMetadata = () => {
       if (video.duration && !isNaN(video.duration)) {
         setDuration(video.duration);
       }
+      drawBoxesOnCanvas();
     };
 
     const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
+    const handlePause = () => {
+      setIsPlaying(false);
+      drawBoxesOnCanvas();
+    };
+    const handleEnded = () => {
+      setIsPlaying(false);
+      drawBoxesOnCanvas();
+    };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -86,7 +210,33 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [viewMode, effectiveSrc]);
+  }, [viewMode, effectiveSrc, drawBoxesOnCanvas]);
+
+  // 60 FPS requestAnimationFrame loop during active video playback
+  useEffect(() => {
+    let animId: number;
+    const loop = () => {
+      drawBoxesOnCanvas();
+      if (isPlaying) {
+        animId = requestAnimationFrame(loop);
+      }
+    };
+
+    if (isPlaying) {
+      animId = requestAnimationFrame(loop);
+    } else {
+      drawBoxesOnCanvas();
+    }
+
+    return () => cancelAnimationFrame(animId);
+  }, [isPlaying, drawBoxesOnCanvas]);
+
+  // Window resize listener to keep canvas scaled
+  useEffect(() => {
+    const handleResize = () => drawBoxesOnCanvas();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [drawBoxesOnCanvas]);
 
   // Handle Play/Pause
   const togglePlay = () => {
@@ -105,6 +255,7 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
     const clamped = Math.max(0, Math.min(seconds, maxDur));
     videoRef.current.currentTime = clamped;
     setCurrentTime(clamped);
+    drawBoxesOnCanvas();
   };
 
   const skipDelta = (deltaSec: number) => {
@@ -156,6 +307,17 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
     a.click();
   };
 
+  const triggerRescan = async () => {
+    if (onRescan) {
+      setIsRescanning(true);
+      try {
+        await onRescan();
+      } finally {
+        setIsRescanning(false);
+      }
+    }
+  };
+
   // SVG chart coordinates for timeline
   const maxPcu = Math.max(1, ...result.timeline.map((p) => p.pcu));
   const chartWidth = 600;
@@ -180,6 +342,22 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
 
   return (
     <div className="results-container">
+      {/* Rescan Banner Prompt if video was analyzed without live frame bounding boxes */}
+      {!hasBoxesInTimeline && onRescan && (
+        <div className="rescan-prompt-banner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Sparkles size={18} />
+            <span>
+              <strong>Enable Live Moving Bounding Boxes:</strong> This video was processed before real-time box streaming was activated. Click Re-Scan to overlay detection boxes on every vehicle during playback!
+            </span>
+          </div>
+          <button className="rescan-btn" onClick={triggerRescan} disabled={isRescanning}>
+            <RefreshCw size={14} className={isRescanning ? 'spin' : ''} />
+            <span>{isRescanning ? 'Scanning Video...' : 'Scan Live Detections'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Hero Stats Bar */}
       <div className="stats-grid">
         <div className="stat-card glass-panel">
@@ -246,7 +424,7 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
 
       {/* Main Video Analysis Grid */}
       <div className="analysis-layout-grid">
-        {/* Left Side: Video Player / Peak Snapshot Viewer */}
+        {/* Left Side: Video Player with Real-Time Bounding Box Overlay */}
         <div className="viewer-panel glass-panel">
           <div className="viewer-header">
             <div className="viewer-title-row">
@@ -256,7 +434,7 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
                 <button
                   className={`tab-switch-btn ${viewMode === 'video' ? 'active' : ''}`}
                   onClick={() => setViewMode('video')}
-                  title="Play/Pause full uploaded traffic video"
+                  title="Play/Pause full uploaded traffic video with live bounding boxes"
                 >
                   <Film size={15} />
                   <span>Interactive Video Player</span>
@@ -273,6 +451,18 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
             </div>
 
             <div className="viewer-controls">
+              {/* AI Overlay toggle */}
+              {viewMode === 'video' && (
+                <button
+                  className={`ai-overlay-badge ${showAiBoxes ? '' : 'inactive'}`}
+                  onClick={() => setShowAiBoxes(!showAiBoxes)}
+                  title="Toggle real-time detection bounding box overlay on video"
+                >
+                  {showAiBoxes ? <Eye size={14} /> : <EyeOff size={14} />}
+                  <span>{showAiBoxes ? `Detections ON (${liveBoxesCount})` : 'Detections OFF'}</span>
+                </button>
+              )}
+
               <button
                 className="jump-peak-btn"
                 onClick={jumpToPeak}
@@ -285,7 +475,7 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
             </div>
           </div>
 
-          {/* VIEWPORT: Video Player or Peak Snapshot */}
+          {/* VIEWPORT: Video Player with Real-Time Canvas Overlay */}
           <div className="image-viewport" ref={containerRef}>
             {viewMode === 'video' && !videoError ? (
               <div className="video-player-container">
@@ -300,6 +490,13 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
                     setVideoError(true);
                     setViewMode('snapshot');
                   }}
+                />
+
+                {/* Real-time Bounding Box Overlay Canvas */}
+                <canvas
+                  ref={canvasRef}
+                  className="video-canvas-overlay"
+                  onClick={togglePlay}
                 />
 
                 {/* Big Center Play Icon Overlay when paused */}
@@ -372,13 +569,22 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
                         {formatTime(currentTime)} / {formatTime(totalVideoDur)}
                       </span>
 
-                      {/* Status indicator pill */}
+                      {/* Status indicator pill with live vehicle count */}
                       <span className={`playback-status-pill ${!isPlaying ? 'paused' : ''}`}>
-                        {isPlaying ? '▶ PLAYING' : '⏸ PAUSED'}
+                        {isPlaying ? `▶ PLAYING (${liveBoxesCount} detected)` : '⏸ PAUSED'}
                       </span>
                     </div>
 
                     <div className="video-controls-group">
+                      {/* Bounding box toggle button */}
+                      <button
+                        className={`video-ctrl-btn ${showAiBoxes ? 'active' : ''}`}
+                        onClick={() => setShowAiBoxes(!showAiBoxes)}
+                        title="Toggle live bounding box overlay"
+                      >
+                        {showAiBoxes ? <Eye size={16} /> : <EyeOff size={16} />}
+                      </button>
+
                       {/* Playback speed selector */}
                       {[0.5, 1.0, 1.5, 2.0].map((rate) => (
                         <button
@@ -448,7 +654,7 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({ result, vide
                 </span>
               </div>
               <span className="font-mono text-muted">
-                {currentTime.toFixed(1)}s • Time vs PCU Load
+                {currentTime.toFixed(1)}s • Time vs PCU Load ({liveBoxesCount} vehicles)
               </span>
             </div>
 
