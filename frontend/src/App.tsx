@@ -21,22 +21,23 @@ export const App: React.FC = () => {
   const [isGreenCorridor, setIsGreenCorridor] = useState<boolean>(false);
   const [serverStatus, setServerStatus] = useState<'connected' | 'offline' | 'checking'>('checking');
 
-  // Check health on mount
-  useEffect(() => {
-    const checkServer = async () => {
-      try {
-        const res = await fetch('/api/v1/health');
-        if (res.ok) {
-          setServerStatus('connected');
-        } else {
-          setServerStatus('offline');
-        }
-      } catch (e) {
+  // Check health on mount with fast 4s polling and instant manual retry
+  const checkServer = async () => {
+    try {
+      const res = await fetch('/api/v1/health');
+      if (res.ok) {
+        setServerStatus('connected');
+      } else {
         setServerStatus('offline');
       }
-    };
+    } catch (e) {
+      setServerStatus('offline');
+    }
+  };
+
+  useEffect(() => {
     checkServer();
-    const interval = setInterval(checkServer, 10000);
+    const interval = setInterval(checkServer, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -164,6 +165,7 @@ export const App: React.FC = () => {
         isGreenCorridor={isGreenCorridor}
         onToggleGreenCorridor={toggleGreenCorridor}
         serverStatus={serverStatus}
+        onCheckHealth={checkServer}
       />
 
       <main className="main-content">

@@ -6,6 +6,7 @@ interface NavbarProps {
   isGreenCorridor: boolean;
   onToggleGreenCorridor: () => void;
   serverStatus: 'connected' | 'offline' | 'checking';
+  onCheckHealth?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -14,6 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isGreenCorridor,
   onToggleGreenCorridor,
   serverStatus,
+  onCheckHealth,
 }) => {
   return (
     <header className="navbar-container glass-panel">
@@ -62,10 +64,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       </nav>
 
       <div className="action-status-group">
-        <div className="status-indicator-box">
+        <div
+          className="status-indicator-box"
+          onClick={onCheckHealth}
+          title="Click to re-check backend connection status"
+          style={{ cursor: 'pointer' }}
+        >
           <span className={`status-dot ${serverStatus === 'connected' ? 'dot-online' : 'dot-offline'}`} />
           <span className="status-text font-mono">
-            {serverStatus === 'connected' ? 'FASTAPI :8000' : 'BACKEND OFFLINE'}
+            {serverStatus === 'connected' ? 'FASTAPI :8000' : 'BACKEND OFFLINE (RETRY)'}
           </span>
         </div>
 

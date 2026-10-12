@@ -17,3 +17,5 @@ data/bangalore_jam_test.jpg
 scripts/test_*.py
 data/continuous_learning/
 *.db
+*.mp4
+data/*.mp4
