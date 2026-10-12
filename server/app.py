@@ -4,12 +4,18 @@ Exposes detection, tracking, traffic intelligence, predictive AI, incident detec
 and adaptive signal control via async REST and WebSockets.
 """
 
+import sys
 import os
 import io
 import time
 import base64
 import tempfile
 import asyncio
+
+# Fix Windows Proactor IOCP socket aborts (WinError 64: 'The specified network name is no longer available')
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -613,10 +619,10 @@ async def websocket_telemetry(websocket: WebSocket):
             frame = _sample_frames[frame_idx % len(_sample_frames)]
             frame_idx += 1
 
-            # Process through pipeline
-            telemetry = pipeline.process_frame(frame)
+            # Process in background thread to never block the asyncio event loop or HTTP endpoints
+            telemetry = await asyncio.to_thread(pipeline.process_frame, frame)
             await websocket.send_json(telemetry)
-            await asyncio.sleep(0.1) # 10 Hz broadcast
+            await asyncio.sleep(1.0) # 1 Hz broadcast (responsive, lightweight)
     except WebSocketDisconnect:
         pass
     except Exception as e:
