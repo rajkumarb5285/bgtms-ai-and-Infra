@@ -85,6 +85,11 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Check if an emergency vehicle (ambulance) incident occurred in this video
+  const emergencyIncident = result.incidents?.find(
+    (inc) => inc.incident_type === 'EMERGENCY_VEHICLE_APPROACH' || inc.severity === 'CRITICAL' || inc.details?.class_name === 'emergency_vehicle'
+  );
+
   // Find nearest timeline point for current playback second
   const findClosestPoint = useCallback((sec: number): VideoTimelinePoint | null => {
     if (!result.timeline || result.timeline.length === 0) return null;
@@ -139,34 +144,38 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({
         icon: '🚘'
       };
 
-      // Shaded box fill
-      ctx.fillStyle = colorData.fill;
+      const isEmergency = box.class_name === 'emergency_vehicle';
+
+      // Shaded box fill (Crimson pulse for emergency vehicle)
+      ctx.fillStyle = isEmergency ? 'rgba(239, 68, 68, 0.40)' : colorData.fill;
       ctx.fillRect(x, y, w, h);
 
       // Neon glowing border
-      ctx.strokeStyle = colorData.stroke;
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = colorData.stroke;
-      ctx.shadowBlur = 6;
+      ctx.strokeStyle = isEmergency ? '#ef4444' : colorData.stroke;
+      ctx.lineWidth = isEmergency ? 4 : 2.5;
+      ctx.shadowColor = isEmergency ? '#ef4444' : colorData.stroke;
+      ctx.shadowBlur = isEmergency ? 16 : 6;
       ctx.strokeRect(x, y, w, h);
       ctx.shadowBlur = 0;
 
       // Label chip above bounding box
-      const label = `${colorData.icon} ${box.class_name.replace(/_/g, ' ').toUpperCase()} #${box.track_id} ${(box.confidence * 100).toFixed(0)}%`;
-      ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+      const label = isEmergency
+        ? `🚨 AMBULANCE #${box.track_id} PREEMPTION: STOP ALL`
+        : `${colorData.icon} ${box.class_name.replace(/_/g, ' ').toUpperCase()} #${box.track_id} ${(box.confidence * 100).toFixed(0)}%`;
+      ctx.font = isEmergency ? 'bold 12px Inter, system-ui, sans-serif' : 'bold 11px Inter, system-ui, sans-serif';
       const textWidth = ctx.measureText(label).width;
-      const tagH = 18;
-      const tagW = textWidth + 12;
+      const tagH = isEmergency ? 22 : 18;
+      const tagW = textWidth + 14;
       const tagY = Math.max(0, y - tagH - 2);
 
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.fillStyle = isEmergency ? 'rgba(185, 28, 28, 0.95)' : 'rgba(15, 23, 42, 0.88)';
       ctx.fillRect(x, tagY, tagW, tagH);
-      ctx.strokeStyle = colorData.stroke;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = isEmergency ? '#fca5a5' : colorData.stroke;
+      ctx.lineWidth = isEmergency ? 1.5 : 1;
       ctx.strokeRect(x, tagY, tagW, tagH);
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(label, x + 6, tagY + 13);
+      ctx.fillText(label, x + 7, tagY + (isEmergency ? 15 : 13));
     });
   }, [findClosestPoint, showAiBoxes, viewMode]);
 
@@ -342,6 +351,38 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({
 
   return (
     <div className="results-container">
+      {/* Emergency Vehicle Preemption Banner */}
+      {emergencyIncident && (
+        <div className="emergency-preemption-banner">
+          <div className="emergency-banner-left">
+            <span className="emergency-siren-badge">🚨 CRITICAL INCIDENT</span>
+            <div className="emergency-banner-text">
+              <strong>EMERGENCY VEHICLE (AMBULANCE) DETECTED — AUTOMATED GREEN CORRIDOR PREEMPTION ACTIVE</strong>
+              <p>
+                Inbound at {emergencyIncident.video_time_sec !== undefined ? `${emergencyIncident.video_time_sec}s` : 'active traffic'}.
+                All conflicting approaches held at RED. STOP ALL CONFLICTING VEHICLES.
+              </p>
+            </div>
+          </div>
+          {emergencyIncident.video_time_sec !== undefined && (
+            <button
+              className="jump-emergency-btn"
+              onClick={() => {
+                setViewMode('video');
+                seekTo(emergencyIncident.video_time_sec!);
+                if (videoRef.current) {
+                  videoRef.current.play().catch(() => {});
+                }
+              }}
+              title="Jump directly to the ambulance pass in video"
+            >
+              <Play size={14} fill="currentColor" />
+              <span>Jump to Ambulance ({emergencyIncident.video_time_sec}s)</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Rescan Banner Prompt if video was analyzed without live frame bounding boxes */}
       {!hasBoxesInTimeline && onRescan && (
         <div className="rescan-prompt-banner">
@@ -460,6 +501,21 @@ export const VideoResultsView: React.FC<VideoResultsViewProps> = ({
                 >
                   {showAiBoxes ? <Eye size={14} /> : <EyeOff size={14} />}
                   <span>{showAiBoxes ? `Detections ON (${liveBoxesCount})` : 'Detections OFF'}</span>
+                </button>
+              )}
+
+              {emergencyIncident?.video_time_sec !== undefined && (
+                <button
+                  className="jump-emergency-btn"
+                  style={{ padding: '5px 11px', fontSize: 11 }}
+                  onClick={() => {
+                    setViewMode('video');
+                    seekTo(emergencyIncident.video_time_sec!);
+                  }}
+                  title="Jump to Ambulance Moment"
+                >
+                  <Play size={12} fill="currentColor" />
+                  <span>Ambulance ({emergencyIncident.video_time_sec}s)</span>
                 </button>
               )}
 

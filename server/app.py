@@ -259,11 +259,12 @@ async def analyze_photo(
 async def analyze_video(
     file: UploadFile = File(...),
     confidence_threshold: float = Query(0.35, ge=0.05, le=0.95),
-    max_seconds: int = Query(60, ge=3, le=300)
+    max_seconds: int = Query(300, ge=3, le=600)
 ):
     """
     High-Throughput Video Analysis: decodes frames, runs fast single-pass tracking,
-    aggregates unique traffic volume and PCU, and archives peak traffic frames to Continuous Learning store.
+    aggregates unique traffic volume and PCU, detects emergency vehicles/ambulances with
+    automated Green Corridor preemption, and archives peak traffic frames.
     """
     start_t = time.time()
 
@@ -294,13 +295,17 @@ async def analyze_video(
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration_sec = total_frames / max(1.0, fps)
 
-    # High-Throughput Optimization: Sample every 0.5s (2 fps) with fast single-pass inference (no tile overhead)
-    step = max(1, int(fps * 0.5))
-    max_frames_to_process = int(min(duration_sec, max_seconds) * fps)
+    # Adaptive Sampling: cover the full video duration up to max_seconds with ~100 strategically spaced frames
+    effective_max_sec = min(duration_sec, float(max_seconds))
+    target_samples = min(120, max(30, int(effective_max_sec * 2.0)))
+    sample_interval_sec = max(0.5, effective_max_sec / float(target_samples))
+    step = max(1, int(fps * sample_interval_sec))
+    max_frames_to_process = int(effective_max_sec * fps)
 
     unique_tracks: Dict[int, str] = {}
     timeline: List[Dict[str, Any]] = []
     video_incidents: List[Dict[str, Any]] = []
+    has_emergency_vehicle = False
     peak_pcu = 0.0
     peak_second = 0.0
     peak_frame_b64 = None
@@ -315,7 +320,7 @@ async def analyze_video(
 
         if frame_idx % step == 0:
             current_sec = round(frame_idx / fps, 1)
-            # Ultra-fast single-pass detection for real-time video tracking
+            # Fast single-pass detection with rider fusion and ambulance recognition
             detections = pipeline.detector.detect(frame, conf_threshold=confidence_threshold, enable_sahi=False)
             tracked = pipeline.tracker.update(detections)
 
@@ -335,12 +340,24 @@ async def analyze_video(
                     "norm_y2": round(float(max(0.0, min(1.0, t.bbox.y2 / max(1, h_f)))), 4)
                 })
 
+            # 1. Incident checks (Accidents / Stalled Vehicles)
             acc = pipeline.accident_detector.check_incidents(tracked)
             if acc:
                 for a in acc:
                     alert_dict = a.model_dump()
                     alert_dict["video_time_sec"] = current_sec
                     video_incidents.append(alert_dict)
+
+            # 2. Emergency Vehicle Scan & Automated Green Corridor Preemption Trigger
+            emergencies, green_req = pipeline.emergency_detector.process_emergency_vehicles(
+                tracked, approach_id=pipeline.approach_id, current_time=current_sec
+            )
+            if emergencies:
+                for emg in emergencies:
+                    alert_dict = emg.model_dump()
+                    alert_dict["video_time_sec"] = current_sec
+                    video_incidents.append(alert_dict)
+                    has_emergency_vehicle = True
 
             timeline.append({
                 "second": current_sec,
@@ -372,6 +389,17 @@ async def analyze_video(
         class_breakdown[cls_name] = class_breakdown.get(cls_name, 0) + 1
         total_unique_pcu += PCU_BY_NAME.get(cls_name, 1.0)
 
+    # Build Preemptive Signal Plan if Emergency Vehicle (Ambulance) was detected
+    has_emergency = has_emergency_vehicle or any(
+        inc.get("incident_type") == "EMERGENCY_VEHICLE_APPROACH" for inc in video_incidents
+    )
+    preemption_plan = None
+    if has_emergency:
+        preemption_plan = pipeline.emergency_detector.build_preemption_signal_plan(
+            junction_id="Junction_Central",
+            priority_approach=pipeline.approach_id
+        ).model_dump()
+
     # Ingest peak video scene into Continuous Learning Store
     learning_meta = {}
     if peak_raw_frame is not None:
@@ -401,6 +429,8 @@ async def analyze_video(
         "class_breakdown": class_breakdown,
         "timeline": timeline,
         "incidents": video_incidents,
+        "is_green_corridor": has_emergency,
+        "signal_plan": preemption_plan,
         "peak_snapshot": peak_frame_b64,
         "continuous_learning": learning_meta,
         "latency_ms": round(elapsed_ms, 1)

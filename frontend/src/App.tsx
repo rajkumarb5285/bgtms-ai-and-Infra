@@ -96,7 +96,7 @@ export const App: React.FC = () => {
       formData.append('file', file);
 
       const res = await fetch(
-        `/api/v1/analyze/video?confidence_threshold=${confidenceThreshold}&max_seconds=60`,
+        `/api/v1/analyze/video?confidence_threshold=${confidenceThreshold}&max_seconds=360`,
         {
           method: 'POST',
           body: formData,

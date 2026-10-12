@@ -216,13 +216,16 @@ class VehicleDetector:
                     "person": ("pedestrian", 6)
                 }
 
-                # Step 1: Collect all candidate vehicle detections
-                cand_boxes = []
-                cand_scores = []
-                cand_cats = []
+                # Step 1: Collect candidates separated into Vehicles vs Persons
+                veh_boxes = []
+                veh_scores = []
+                veh_cats = []
+                veh_cat_ids = []
 
-                # Dynamic candidate threshold for high-recall NMS filtering
-                cand_thresh = max(0.24, effective_thresh * 0.75)
+                person_boxes = []
+                person_scores = []
+
+                cand_thresh = max(0.22, effective_thresh * 0.70)
 
                 for b, s, l in zip(all_raw_boxes, all_raw_scores, all_raw_labels):
                     if s < cand_thresh:
@@ -233,7 +236,6 @@ class VehicleDetector:
                     if cat_name not in traffic_coco_map:
                         continue
 
-                    # Clip to frame boundaries
                     x1 = float(max(0.0, min(float(w - 1), b[0])))
                     y1 = float(max(0.0, min(float(h - 1), b[1])))
                     x2 = float(max(x1 + 1, min(float(w), b[2])))
@@ -244,23 +246,107 @@ class VehicleDetector:
                     if bw <= 4 or bh <= 4:
                         continue
 
-                    cand_boxes.append([x1, y1, x2, y2])
-                    cand_scores.append(float(s))
-                    cand_cats.append(cat_name)
+                    if cat_name == "person":
+                        person_boxes.append([x1, y1, x2, y2])
+                        person_scores.append(float(s))
+                    else:
+                        veh_boxes.append([x1, y1, x2, y2])
+                        veh_scores.append(float(s))
+                        veh_cats.append(cat_name)
+                        veh_cat_ids.append(traffic_coco_map[cat_name][1])
 
-                if not cand_boxes:
-                    return []
+                # Step 2: Class-Aware Vehicle NMS (Vehicles never suppressed by pedestrians)
+                kept_vehicles = []
+                if veh_boxes:
+                    t_vb = torch.tensor(np.array(veh_boxes), dtype=torch.float32)
+                    t_vs = torch.tensor(np.array(veh_scores), dtype=torch.float32)
+                    t_vc = torch.tensor(np.array(veh_cat_ids), dtype=torch.int64)
+                    keep_v = ops.batched_nms(t_vb, t_vs, t_vc, iou_threshold=0.45).numpy()
 
-                # Step 2: Cross-Class NMS to eliminate duplicate overlapping boxes
-                t_b = torch.tensor(np.array(cand_boxes), dtype=torch.float32)
-                t_s = torch.tensor(np.array(cand_scores), dtype=torch.float32)
-                keep_indices = ops.nms(t_b, t_s, iou_threshold=0.30).numpy()
+                    # Cross-vehicle deduplication (e.g. car vs truck duplicates)
+                    sub_b = t_vb[keep_v]
+                    sub_s = t_vs[keep_v]
+                    keep_v_cross = ops.nms(sub_b, sub_s, iou_threshold=0.55).numpy()
 
-                # Step 3: Perspective Depth-Aware Vehicle Sizing & Fine-Tuned Classification
-                for idx in keep_indices:
-                    box = cand_boxes[idx]
-                    s = cand_scores[idx]
-                    c = cand_cats[idx]
+                    for idx in keep_v_cross:
+                        orig_idx = keep_v[idx]
+                        kept_vehicles.append({
+                            "box": veh_boxes[orig_idx],
+                            "score": veh_scores[orig_idx],
+                            "cat": veh_cats[orig_idx]
+                        })
+
+                # Step 3: Pedestrian NMS
+                kept_persons = []
+                if person_boxes:
+                    t_pb = torch.tensor(np.array(person_boxes), dtype=torch.float32)
+                    t_ps = torch.tensor(np.array(person_scores), dtype=torch.float32)
+                    keep_p = ops.nms(t_pb, t_ps, iou_threshold=0.40).numpy()
+                    for idx in keep_p:
+                        kept_persons.append({
+                            "box": person_boxes[idx],
+                            "score": person_scores[idx],
+                            "absorbed": False
+                        })
+
+                # Step 4: Rider-to-Two-Wheeler Fusion
+                # When a person sits on a motorcycle or bicycle, merge them into the vehicle and absorb the pedestrian
+                for v in kept_vehicles:
+                    if v["cat"] in ["motorcycle", "bicycle"]:
+                        vx1, vy1, vx2, vy2 = v["box"]
+                        for p in kept_persons:
+                            if p["absorbed"]:
+                                continue
+                            px1, py1, px2, py2 = p["box"]
+                            # Horizontal overlap with bike
+                            inter_x = max(0.0, min(vx2, px2) - max(vx1, px1))
+                            pw = px2 - px1
+                            # Vertical relation: person sits on or directly above bike
+                            if inter_x > 0.20 * pw and (py1 <= vy2 and vy2 >= py1 + 0.25 * (py2 - py1)):
+                                # Absorb rider into vehicle envelope
+                                v["box"] = [
+                                    min(vx1, px1),
+                                    min(vy1, py1),
+                                    max(vx2, px2),
+                                    max(vy2, py2)
+                                ]
+                                v["score"] = max(v["score"], p["score"])
+                                p["absorbed"] = True
+
+                # Step 5: Carriageway Rider Disambiguation
+                # In Indian traffic, any person detected in the driving lanes (not on sidewalk) is a rider on a 2-wheeler
+                for p in kept_persons:
+                    if p["absorbed"]:
+                        continue
+                    px1, py1, px2, py2 = p["box"]
+                    pcx = (px1 + px2) / 2.0
+                    pcy = (py1 + py2) / 2.0
+                    pbw = px2 - px1
+                    pbh = py2 - py1
+                    paspect = pbw / max(1.0, pbh)
+
+                    # In traffic carriageway: middle 85% of road width and below horizon
+                    is_in_roadway = (pcy > h * 0.24) and (0.07 * w < pcx < 0.93 * w)
+                    # Check if on sidewalk curb (sidewalks are on far edges with bollards / pedestrians)
+                    is_on_curb = (pcx <= 0.08 * w) or (pcx >= 0.90 * w)
+
+                    if is_in_roadway and not is_on_curb:
+                        # Reclassify as motorcycle rider on the road
+                        # Expand downward slightly to encompass the motorcycle body & tires
+                        expanded_y2 = min(float(h), py2 + pbh * 0.28)
+                        kept_vehicles.append({
+                            "box": [px1, py1, px2, expanded_y2],
+                            "score": p["score"],
+                            "cat": "motorcycle"
+                        })
+                        p["absorbed"] = True
+
+                # Step 6: Process and Classify Final Detections
+                # (Perspective Sizing, Auto-Rickshaw, and Emergency Vehicle Ambulance Detection)
+                for v in kept_vehicles:
+                    box = v["box"]
+                    s = v["score"]
+                    c = v["cat"]
 
                     if s < effective_thresh:
                         continue
@@ -272,19 +358,19 @@ class VehicleDetector:
                     aspect = bw / max(1.0, bh)
                     cy = (y1 + y2) / 2.0
 
-                    # Perspective baseline car area at vertical depth cy (normalized to reference frame)
                     expected_car_area = (400.0 + (cy / max(1.0, float(h))) * 700.0) * (w * h / (568.0 * 295.0))
 
-                    # Crop for yellow / auto-rickshaw livery test
+                    # Crop vehicle for color and livery analysis
                     crop_y1, crop_y2 = max(0, int(y1)), min(h, int(y2))
                     crop_x1, crop_x2 = max(0, int(x1)), min(w, int(x2))
-                    crop_yellow = mask_yellow[crop_y1:crop_y2, crop_x1:crop_x2]
-                    yellow_ratio = float((crop_yellow > 0).mean()) if crop_yellow.size > 0 else 0.0
+                    veh_crop = image[crop_y1:crop_y2, crop_x1:crop_x2]
 
                     target_name, target_id = traffic_coco_map[c]
 
-                    # Refinement A: Small cars falsely predicted as buses
-                    # Real city buses (BMTC, Volvo) are large (> 1.7x car area at that row depth)
+                    # Auto-Rickshaw Livery Analysis (Yellow Body)
+                    crop_yellow = mask_yellow[crop_y1:crop_y2, crop_x1:crop_x2]
+                    yellow_ratio = float((crop_yellow > 0).mean()) if crop_yellow.size > 0 else 0.0
+
                     if c == "bus":
                         if area < (expected_car_area * 1.70) and s < 0.75:
                             if yellow_ratio > 0.14 and area <= expected_car_area:
@@ -294,9 +380,6 @@ class VehicleDetector:
                                 target_name = "car"
                                 target_id = 0
 
-                    # Refinement B: Auto-rickshaw vs Delivery Mini-Truck
-                    # Auto-rickshaw must be compact (<= 1.15x expected car area)
-                    # A larger yellow vehicle (area > 1.25x car area) is a commercial delivery truck/van
                     if target_name in ["car", "truck", "motorcycle"]:
                         if yellow_ratio > 0.14 and 0.60 <= aspect <= 1.45:
                             if area <= (expected_car_area * 1.15):
@@ -306,17 +389,60 @@ class VehicleDetector:
                                 target_name = "truck"
                                 target_id = 4
 
-                    # Refinement C: Motorcycle check
-                    # Distinguishes narrow/compact vehicles in distant queue
                     if target_name == "car" and (aspect < 0.65 or area < expected_car_area * 0.40) and cy < h * 0.55:
                         target_name = "motorcycle"
                         target_id = 1
+
+                    # Emergency Vehicle / Ambulance Detection
+                    # Inspect roof beacon and white/red livery on car, truck, bus, or van crops
+                    if target_name in ["car", "truck", "bus"] and veh_crop.shape[0] >= 18 and veh_crop.shape[1] >= 18:
+                        crop_hsv = cv2.cvtColor(veh_crop, cv2.COLOR_BGR2HSV)
+                        ch, cw = crop_hsv.shape[:2]
+
+                        # Roofline region (upper 25% of vehicle)
+                        roof_hsv = crop_hsv[:int(ch * 0.25), :]
+                        m_r_red = cv2.inRange(roof_hsv, (0, 110, 85), (10, 255, 255)) | cv2.inRange(roof_hsv, (170, 110, 85), (180, 255, 255))
+                        m_r_blue = cv2.inRange(roof_hsv, (95, 110, 85), (135, 255, 255))
+                        m_r_amber = cv2.inRange(roof_hsv, (15, 120, 100), (32, 255, 255))
+                        beacon_pix = cv2.countNonZero(m_r_red | m_r_blue | m_r_amber)
+                        blue_pix = cv2.countNonZero(m_r_blue)
+
+                        # Full vehicle livery: White body + Red cross/stripe
+                        # Distinguish ambulance markings from normal passenger car red taillights:
+                        # In an ambulance, emergency markings (red crosses, stripes, lettering) appear on the upper body and roof.
+                        # In standard cars, red is strictly localized at the bottom rear taillights.
+                        m_white = cv2.inRange(crop_hsv, (0, 0, 160), (180, 50, 255))
+                        white_ratio = cv2.countNonZero(m_white) / float(ch * cw)
+
+                        upper_hsv = crop_hsv[:int(ch * 0.55), :]
+                        m_upper_red = cv2.inRange(upper_hsv, (0, 110, 80), (10, 255, 255)) | cv2.inRange(upper_hsv, (170, 110, 80), (180, 255, 255))
+                        upper_red_ratio = cv2.countNonZero(m_upper_red) / max(1.0, float(upper_hsv.shape[0] * upper_hsv.shape[1]))
+
+                        has_roof_beacon = (blue_pix >= 6) or (beacon_pix >= 14 and (beacon_pix / max(1, roof_hsv.shape[0] * roof_hsv.shape[1])) >= 0.015)
+                        has_ambulance_livery = (white_ratio >= 0.22 and upper_red_ratio >= 0.016 and aspect <= 1.35)
+
+                        if has_roof_beacon or has_ambulance_livery:
+                            target_name = "emergency_vehicle"
+                            target_id = 7
+                            s = max(float(s), 0.95)
 
                     detections.append(BoundingBox(
                         x1=x1, y1=y1, x2=x2, y2=y2,
                         confidence=float(s),
                         class_id=target_id,
                         class_name=target_name
+                    ))
+
+                # Step 7: Append genuine pedestrians (on sidewalk or zebra crossing)
+                for p in kept_persons:
+                    if p["absorbed"] or p["score"] < effective_thresh:
+                        continue
+                    px1, py1, px2, py2 = p["box"]
+                    detections.append(BoundingBox(
+                        x1=px1, y1=py1, x2=px2, y2=py2,
+                        confidence=float(p["score"]),
+                        class_id=6,
+                        class_name="pedestrian"
                     ))
 
                 if len(detections) > 0:

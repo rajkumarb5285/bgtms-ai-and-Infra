@@ -1204,3 +1204,89 @@
   border-color: rgba(245, 158, 11, 0.3);
 }
 
+/* Emergency Vehicle Green Corridor Preemption Banner */
+.emergency-preemption-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(185, 28, 28, 0.35) 100%);
+  border: 1.5px solid #ef4444;
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.35);
+  animation: pulse-red-glow 2s infinite ease-in-out;
+  flex-wrap: wrap;
+}
+
+@keyframes pulse-red-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.65);
+    border-color: #f87171;
+  }
+}
+
+.emergency-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.emergency-siren-badge {
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+  white-space: nowrap;
+}
+
+.emergency-banner-text strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fee2e2;
+  letter-spacing: 0.02em;
+}
+
+.emergency-banner-text p {
+  margin: 3px 0 0 0;
+  font-size: 12px;
+  color: #fca5a5;
+  line-height: 1.4;
+}
+
+.jump-emergency-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #f87171;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.jump-emergency-btn:hover {
+  background: #ef4444;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.8);
+  transform: translateY(-1px);
+}
+
+
